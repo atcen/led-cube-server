@@ -12,6 +12,7 @@ from .watercolor import WatercolorAnimation
 from .clock import ClockAnimation
 from .tetris import TetrisAnimation
 from .pacman import PacmanAnimation
+from .dice_roll import DiceRollAnimation
 
 REGISTRY: dict = {
     "snake":        SnakeAnimation,
@@ -28,4 +29,5 @@ REGISTRY: dict = {
     "clock":        ClockAnimation,
     "tetris":       TetrisAnimation,
     "pacman":       PacmanAnimation,
+    "dice_roll":    DiceRollAnimation,
 }

@@ -22,14 +22,20 @@ const api = {
   startAnimation:   (name)     => apiFetch('POST', `/preview/${name}`),
   startWithParams:  (name, p)  => apiFetch('POST', `/preview/${name}/params`, p),
   // Hardware: sendet direkt an die Controller (für Hotkeys)
-  hardwareStart:    (name)     => apiFetch('POST', `/animation/${name}`),
+  previewAnimationParams: (name, p) => apiFetch('POST', `/preview/${name}/params`, p),
+  nextAnimation:    ()         => apiFetch('POST', '/animation/next'),
   stop:             ()         => apiFetch('POST', '/stop'),
   brightness:       (v)        => apiFetch('POST', `/brightness/${v}`),
   getSettings:      ()         => apiFetch('GET',  '/settings'),
   saveSettings:     (data)     => apiFetch('POST', '/settings', data),
   controllers:      ()         => apiFetch('GET',  '/controllers/status'),
+  resetController:  (id)       => apiFetch('POST', `/controllers/${id}/reset`),
+
+  alignAll:         ()         => apiFetch('POST', '/align/all'),
   alignFace:        (id)       => apiFetch('POST', `/align/${id}`),
   alignStop:        ()         => apiFetch('POST', '/align/stop'),
+  alignRotate:      (id)       => apiFetch('POST', `/align/${id}/rotate`),
+  alignFlip:        (id)       => apiFetch('POST', `/align/${id}/flip`),
 };
 
 export default api;

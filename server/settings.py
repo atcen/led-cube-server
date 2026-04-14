@@ -6,6 +6,8 @@ import pathlib
 from .animations import REGISTRY
 
 _PATH = pathlib.Path("settings.json")
+_CACHE = None
+_LAST_MTIME = 0
 
 DEFAULTS: dict = {
     "setup_complete": False,
@@ -35,24 +37,50 @@ DEFAULTS: dict = {
         "random":        "<f9>",    # Zufällige Animation
         "per_animation": {},        # z.B. {"snake": "1", "rainbow": "2"}
     },
+    "face_orientations": [
+        {"rotate": 0, "flip": False}, # 0: FRONT
+        {"rotate": 0, "flip": False}, # 1: BACK
+        {"rotate": 0, "flip": False}, # 2: LEFT
+        {"rotate": 0, "flip": False}, # 3: RIGHT
+        {"rotate": 0, "flip": False}, # 4: TOP
+        {"rotate": 0, "flip": False}, # 5: BOTTOM
+    ],
 }
 
 
 def load() -> dict:
-    """Lädt settings.json und merged mit DEFAULTS."""
+    """Lädt settings.json und merged mit DEFAULTS. Nutzt In-Memory Cache."""
+    global _CACHE, _LAST_MTIME
+    
     if _PATH.exists():
         try:
+            mtime = _PATH.stat().st_mtime
+            if _CACHE is not None and mtime == _LAST_MTIME:
+                return _CACHE
+                
             saved = json.loads(_PATH.read_text())
             merged = dict(DEFAULTS)
             merged.update(saved)
+            
+            _CACHE = merged
+            _LAST_MTIME = mtime
             return merged
         except Exception:
             pass
-    return dict(DEFAULTS)
+    
+    if _CACHE is None:
+        _CACHE = dict(DEFAULTS)
+    return _CACHE
 
 
 def save(data: dict) -> None:
+    global _CACHE, _LAST_MTIME
     _PATH.write_text(json.dumps(data, indent=2))
+    _CACHE = data
+    try:
+        _LAST_MTIME = _PATH.stat().st_mtime
+    except Exception:
+        pass
 
 
 def get(key: str, default=None):

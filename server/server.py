@@ -41,6 +41,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 
 # --- Globaler Zustand ---
 cube               = Cube()
+cube.brightness    = 0.2  # Standard-Helligkeit auf 20% drosseln (Sicherheitswert für TOP)
 current_animation: Animation | None = None
 animation_name     = "none"
 _loop_task         = None
@@ -52,6 +53,7 @@ _last_frame: bytes = bytes(LEDS_TOTAL * 3 * 6)  # 8640 Bytes leer
 
 # Ausrichtungsmodus
 _align_face: int | None = None
+_is_align_all: bool = False
 
 
 # --- Animations-Loop ---
@@ -60,13 +62,24 @@ async def animation_loop() -> None:
     frame_time = 1.0 / FPS
     last_t     = time.monotonic()
     anim_start = last_t
+    loop_count = 0
 
     while True:
         now = time.monotonic()
         dt  = now - last_t
         t   = now - anim_start
         last_t = now
+        
+        loop_count += 1
+        if loop_count % (FPS * 10) == 0: # Alle 10 Sekunden
+             log.info(f"Loop Heartbeat: anim={animation_name}, align={_align_face}, is_align_all={_is_align_all}")
 
+        # Alle 60 Sekunden mDNS-Rediscovery im Hintergrund anstoßen
+        if loop_count % (FPS * 60) == 0:
+             asyncio.create_task(discovery.check_all())
+
+        # Wenn eine Animation läuft ODER wir im Montage/Align-Modus sind:
+        # Puffer rendern und senden.
         if current_animation is not None:
             try:
                 current_animation.tick(cube, dt, t)
@@ -74,6 +87,10 @@ async def animation_loop() -> None:
                 _broadcast_frame(face_buffers)
             except Exception as e:
                 log.error(f"Animation-Fehler: {e}")
+        elif _align_face is not None or _is_align_all:
+            # Zurück auf 30 FPS für konsistentes Debugging
+            face_buffers = render(cube, preview=_preview_mode)
+            _broadcast_frame(face_buffers)
 
         sleep = frame_time - (time.monotonic() - now)
         if sleep > 0:
@@ -124,10 +141,11 @@ async def ws_endpoint(ws: WebSocket):
 
 # --- Helper ---
 def _set_animation(name: str, params: dict | None = None, preview: bool = False) -> None:
-    global current_animation, animation_name, _align_face, _preview_mode
+    global current_animation, animation_name, _align_face, _is_align_all, _preview_mode
     if name not in REGISTRY:
         raise HTTPException(404, f"Animation '{name}' nicht gefunden")
     _align_face   = None
+    _is_align_all = False
     _preview_mode = preview
     cls  = REGISTRY[name]
     anim = cls(**(params or {}))
@@ -210,9 +228,11 @@ async def set_brightness(value: int):
 
 @app.post("/stop")
 async def stop():
-    global current_animation, animation_name
+    global current_animation, animation_name, _align_face, _is_align_all
     current_animation = None
     animation_name    = "none"
+    _align_face       = None
+    _is_align_all     = False
     cube.fill([0, 0, 0])
     face_buffers = render(cube)
     _broadcast_frame(face_buffers)
@@ -230,37 +250,76 @@ async def post_settings(body: dict):
     return settings.update(body)
 
 
-# --- Controller ---
 @app.get("/controllers/status")
 async def controllers_status():
     return await discovery.check_all()
 
 
+@app.post("/controllers/{face_id}/reset")
+async def reset_controller(face_id: int):
+    if face_id not in discovery.CONTROLLERS:
+        raise HTTPException(404, "Controller nicht gefunden")
+    ip = discovery.CONTROLLERS[face_id]
+    log.info(f"Resetting controller {discovery.FACE_NAMES[face_id]} ({ip})")
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.post(f"http://{ip}/json/state", json={"rb": True}, timeout=2.0)
+            return {"status": "reset command sent"}
+        except Exception as e:
+            raise HTTPException(500, f"Reset fehlgeschlagen: {e}")
+
+
+@app.post("/animation/next")
+async def next_animation():
+    st = settings.load()
+    enabled = st.get("enabled_animations", list(REGISTRY.keys()))
+    if not enabled:
+        return {"status": "no animations enabled"}
+    
+    try:
+        current_idx = enabled.index(animation_name)
+        next_idx = (current_idx + 1) % len(enabled)
+    except ValueError:
+        next_idx = 0
+        
+    next_name = enabled[next_idx]
+    _set_animation(next_name)
+    return {"animation": next_name}
+
+
 # --- Ausrichtung ---
 @app.post("/align/all")
 async def align_all():
-    """Alle Flächen gleichzeitig mit Ausrichtungsmustern — für Preview-Vergleich."""
-    global _align_face
+    """Zeigt das 8-Ecken-Montagemuster: Gleiche Farbe an den Ecken = Korrekte Position."""
+    global _align_face, _is_align_all, current_animation, animation_name
+    log.info("Montage-Modus (8 Ecken) aktiviert")
+    current_animation = None
+    animation_name = "none"
     _align_face = None
+    _is_align_all = True
     cube.fill([0, 0, 0])
-    # Jede Fläche bekommt eine eigene Farbe für Ecken/Rand
-    face_colors = [
-        ([255, 0,   0  ], [180, 0,   0  ]),   # 0 FRONT:  Rot
-        ([255, 255, 0  ], [180, 180, 0  ]),   # 1 BACK:   Gelb
-        ([0,   200, 0  ], [0,   120, 0  ]),   # 2 LEFT:   Grün
-        ([0,   200, 200], [0,   120, 120]),   # 3 RIGHT:  Cyan
-        ([0,   80,  255], [0,   50,  180]),   # 4 TOP:    Blau
-        ([200, 0,   200], [120, 0,   120]),   # 5 BOTTOM: Magenta
+
+    # 8 Ecken und ihre Farben (RGB)
+    C1, C2, C3, C4 = [255,0,0], [0,255,0], [0,0,255], [255,255,0]   # Rot, Grün, Blau, Gelb
+    C5, C6, C7, C8 = [255,0,255], [0,255,255], [255,128,0], [255,255,255] # Magenta, Cyan, Orange, Weiß
+
+    # Zuordnung: Welche (Face, Row, Col) bilden welche Ecke?
+    # Siehe TRANSITIONS in cube.py
+    corners = [
+        (C1, [(0,0,0), (2,0,4), (4,4,0)]), # A: Front-Top-Left
+        (C2, [(0,0,4), (3,0,0), (4,4,4)]), # B: Front-Top-Right
+        (C3, [(0,4,0), (2,4,4), (5,0,0)]), # C: Front-Bottom-Left
+        (C4, [(0,4,4), (3,4,0), (5,0,4)]), # D: Front-Bottom-Right
+        (C5, [(1,0,4), (2,0,0), (4,0,0)]), # E: Back-Top-Left (von außen)
+        (C6, [(1,0,0), (3,0,4), (4,0,4)]), # F: Back-Top-Right
+        (C7, [(1,4,4), (2,4,0), (5,4,0)]), # G: Back-Bottom-Left
+        (C8, [(1,4,0), (3,4,4), (5,4,4)]), # H: Back-Bottom-Right
     ]
-    for face_id, (corner_col, edge_col) in enumerate(face_colors):
-        for r in range(5):
-            for c in range(5):
-                if (r == 0 or r == 4) and (c == 0 or c == 4):
-                    cube.set(face_id, r, c, corner_col)
-                elif r == 2 and c == 2:
-                    cube.set(face_id, r, c, [255, 255, 255])
-                elif r == 0 or r == 4 or c == 0 or c == 4:
-                    cube.set(face_id, r, c, edge_col)
+
+    for color, points in corners:
+        for f, r, c in points:
+            cube.set(f, r, c, color)
+    
     face_buffers = render(cube)
     _broadcast_frame(face_buffers)
     return {"aligning": "all"}
@@ -268,33 +327,79 @@ async def align_all():
 
 @app.post("/align/stop")
 async def align_stop():
-    global _align_face
+    global _align_face, _is_align_all
     _align_face = None
+    _is_align_all = False
     cube.fill([0, 0, 0])
-    face_buffers = render(cube)
-    _broadcast_frame(face_buffers)
+    _broadcast_frame(render(cube))
     return {"status": "stopped"}
 
 
 @app.post("/align/{face_id}")
 async def align_face(face_id: int):
-    global _align_face
+    global _align_face, _is_align_all, current_animation, animation_name
     if face_id < 0 or face_id > 5:
         raise HTTPException(400, "face_id muss 0–5 sein")
+    
+    current_animation = None
+    animation_name = "none"
     _align_face = face_id
+    _is_align_all = False
+
+    # Besseres Pattern: 
+    # (0,0) = Weißlich
+    # Oberer Rand (row=0) = Rot
+    # Linker Rand (col=0) = Grün
+    # Restlicher Rand = Blau
+    # Mitte = Dunkelgrau
     cube.fill([0, 0, 0])
-    # Eckblöcke und Mittelblock leuchten, für visuelle Orientierung
     for r in range(5):
         for c in range(5):
-            if (r == 0 or r == 4) and (c == 0 or c == 4):
-                cube.set(face_id, r, c, [255, 0, 0])    # Ecken: Rot
+            if r == 0 and c == 0:
+                cube.set(face_id, r, c, [180, 180, 180]) # Top-Left: Weißlich
+            elif r == 0:
+                cube.set(face_id, r, c, [180, 0, 0])     # Top: Rot
+            elif c == 0:
+                cube.set(face_id, r, c, [0, 180, 0])     # Left: Grün
+            elif r == 4 or c == 4:
+                cube.set(face_id, r, c, [0, 0, 180])     # Bottom/Right: Blau
             elif r == 2 and c == 2:
-                cube.set(face_id, r, c, [0, 255, 0])    # Mitte: Grün
-            elif r == 0 or r == 4 or c == 0 or c == 4:
-                cube.set(face_id, r, c, [0, 0, 255])    # Rand: Blau
+                cube.set(face_id, r, c, [40, 40, 40])    # Mitte: Grau
+
     face_buffers = render(cube)
     _broadcast_frame(face_buffers)
     return {"aligning": face_id}
+
+
+@app.post("/align/{face_id}/rotate")
+async def align_rotate(face_id: int):
+    st = settings.load()
+    orientations = st.get("face_orientations", [])
+    if face_id >= len(orientations):
+        return {"error": "invalid face"}
+
+    orientations[face_id]["rotate"] = (orientations[face_id]["rotate"] + 1) % 4
+    settings.update({"face_orientations": orientations})
+
+    # Pattern neu rendern (mit neuer Orientierung)
+    await align_face(face_id)
+    return orientations[face_id]
+
+
+@app.post("/align/{face_id}/flip")
+async def align_flip(face_id: int):
+    st = settings.load()
+    orientations = st.get("face_orientations", [])
+    if face_id >= len(orientations):
+        return {"error": "invalid face"}
+
+    orientations[face_id]["flip"] = not orientations[face_id].get("flip", False)
+    settings.update({"face_orientations": orientations})
+
+    # Pattern neu rendern
+    await align_face(face_id)
+    return orientations[face_id]
+
 
 
 # StaticFiles zuletzt mounten (nach allen anderen Endpoints)

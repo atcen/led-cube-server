@@ -14,7 +14,7 @@ import socket
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-_MDNS_HOSTS = {
+MDNS_HOSTS = {
     0: ("w1.local", "192.168.10.241"),  # FRONT
     1: ("w2.local", "192.168.10.233"),  # BACK
     2: ("w3.local", "192.168.10.207"),  # LEFT
@@ -39,7 +39,7 @@ def _resolve_controllers() -> dict[int, str]:
     with ThreadPoolExecutor(max_workers=6) as pool:
         futures = {
             pool.submit(_resolve_one, face_id, hostname, fallback_ip): face_id
-            for face_id, (hostname, fallback_ip) in _MDNS_HOSTS.items()
+            for face_id, (hostname, fallback_ip) in MDNS_HOSTS.items()
         }
         for future in as_completed(futures):
             face_id, ip = future.result()

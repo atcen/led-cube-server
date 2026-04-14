@@ -149,6 +149,86 @@ html, body {
   border-radius: 4px;
 }
 
+.anim-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.anim-item:hover .anim-actions {
+  opacity: 1;
+}
+
+.anim-item.active .anim-shortcut {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* Controller List */
+.ctrl-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ctrl-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--bg);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.ctrl-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ctrl-dot.online { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.ctrl-dot.offline { background: var(--danger); }
+
+.ctrl-face { font-size: 12px; font-weight: 600; flex: 1; }
+.ctrl-ip { font-size: 11px; color: var(--text-dim); }
+
+/* Buttons Icon */
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.anim-item.active .btn-icon {
+  color: #fff;
+}
+
+.btn-play:hover {
+  color: var(--success) !important;
+}
+
+.btn-reset:hover {
+  color: var(--warning) !important;
+}
+
 .anim-item.active .anim-shortcut {
   background: rgba(255,255,255,0.2);
   color: #fff;

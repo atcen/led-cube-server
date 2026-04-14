@@ -7,11 +7,12 @@ Wants=network.target
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/wled
-ExecStart=/home/pi/wled/.venv/bin/uvicorn server.server:app --host 0.0.0.0 --port 8000
+ExecStart=/home/pi/wled/.venv/bin/uvicorn server.server:app --host 0.0.0.0 --port 8000 --reload --reload-dir server
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
+Environment=PYTHONUNBUFFERED=1
 # Genug Zeit für mDNS-Auflösung beim Start
 ExecStartPre=/bin/sleep 3
 

@@ -130,6 +130,12 @@ async function init() {
     api.stop().then(() => setActive('none')).catch(console.error);
   });
 
+  document.getElementById('btn-next').addEventListener('click', () => {
+    api.nextAnimation().then(r => {
+      if (r.animation) setActive(r.animation, false);
+    }).catch(console.error);
+  });
+
   // Aktuellen Status abfragen
   api.status().then(s => {
     setActive(s.animation, s.preview ?? true);
@@ -156,9 +162,18 @@ function renderAnimList() {
     const scLabel = combo ? pynputToDisplay(combo) : '';
     li.innerHTML = `
       <span class="anim-name">${name}</span>
-      ${scLabel ? `<span class="anim-shortcut">${scLabel}</span>` : ''}
+      <div class="anim-actions">
+        ${scLabel ? `<span class="anim-shortcut">${scLabel}</span>` : ''}
+        <button class="btn-icon btn-play" title="Auf Hardware abspielen">&#9654;</button>
+      </div>
     `;
-    li.addEventListener('click', () => startAnimation(name));
+    li.querySelector('.anim-name').addEventListener('click', () => startAnimation(name));
+    li.querySelector('.btn-play').addEventListener('click', (e) => {
+      e.stopPropagation();
+      fetch(`/animation/${name}`, { method: 'POST' })
+        .then(() => setActive(name, false))
+        .catch(console.error);
+    });
     animList.appendChild(li);
   }
 }
@@ -299,7 +314,21 @@ async function loadControllers() {
         <span class="ctrl-dot ${c.online ? 'online' : 'offline'}"></span>
         <span class="ctrl-face">${c.face}</span>
         <span class="ctrl-ip">${c.ip}</span>
+        <button class="btn-icon btn-reset" data-id="${c.face_id}" title="Reset">&#8635;</button>
       </li>`).join('');
+      
+    ctrlList.querySelectorAll('.btn-reset').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        if (confirm(`Controller ${id} wirklich neustarten?`)) {
+          api.resetController(id).then(() => {
+            showToast(`Reset für Controller ${id} gesendet`, 'success');
+            setTimeout(loadControllers, 5000);
+          }).catch(err => showToast(`Reset fehlgeschlagen: ${err}`, 'error'));
+        }
+      });
+    });
   } catch (e) {
     ctrlList.innerHTML = '<li style="color:var(--danger);font-size:12px">Fehler</li>';
   }

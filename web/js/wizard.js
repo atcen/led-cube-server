@@ -137,29 +137,138 @@ export class Wizard {
   _renderAlign(body) {
     const faces = ['FRONT (0)', 'BACK (1)', 'LEFT (2)', 'RIGHT (3)', 'TOP (4)', 'BOTTOM (5)'];
     const btns  = faces.map((f, i) => `
-      <button class="face-btn" data-face="${i}">${f}</button>`).join('');
+      <button class="face-btn ${this._alignActive === i ? 'active' : ''}" data-face="${i}">${f}</button>`).join('');
 
     body.innerHTML = `
-      <h3>Panel-Ausrichtung prüfen</h3>
-      <p>Klicke auf eine Fläche, um das Ausrichtungs-Pattern zu aktivieren (Ecken=Rot, Rand=Blau, Mitte=Grün). Prüfe, ob die LEDs korrekt leuchten.</p>
-      <div class="face-buttons" style="margin-bottom:12px">${btns}</div>
-      <button class="btn btn-secondary" id="align-stop-btn">Ausrichtung stoppen</button>
+      <h3>Cube-Montage & Ausrichtung</h3>
+      <p>Bringe die Panels in die richtige Position. Jede Kante hat einen eindeutigen Farbcode (X-Y-X), der an beiden anliegenden Panels identisch sein muss.</p>
+      
+      <div style="margin-bottom:16px; display:flex; gap:10px">
+        <button class="btn btn-primary" id="align-all-btn" style="flex:1">Alle Flächen: Montage-Modus</button>
+        <button class="btn btn-secondary" id="align-stop-btn">Aus</button>
+      </div>
+
+      <div style="display:flex; flex-direction:column; align-items:center; background:#111; padding:15px; border-radius:8px; border:1px solid #333; margin-bottom:16px">
+        <div style="margin-bottom:10px"><strong>Montage-Guide (Netz-Ansicht):</strong></div>
+        ${this._generateNetHTML()}
+        <div style="margin-top:10px; font-size:0.85em; color:#aaa">Gleiche Farbcodes treffen an den Kanten aufeinander. Weißer Punkt = Front oben links.</div>
+      </div>
+
+      <p style="font-size:0.9em">Einzelne Fläche prüfen & korrigieren (Software-Rotation):</p>
+      <div class="face-buttons" style="margin-bottom:16px">${btns}</div>
+
+      <div class="align-ui ${this._alignActive === null ? 'hidden' : ''}">
+        <div class="align-container" style="display:flex; gap:20px; align-items:center; background:#111; padding:15px; border-radius:8px; border:1px solid #444">
+          <div id="align-pattern-guide" style="width:100px; height:100px; background:#000; border:2px solid #555; display:grid; grid-template-columns: repeat(5, 1fr); gap:1px; padding:2px">
+            ${this._generatePatternHTML()}
+          </div>
+          <div class="align-controls" style="flex:1">
+            <div style="display:flex; gap:5px; flex-direction:column">
+              <button class="btn btn-secondary btn-sm" id="align-rotate-btn">↻ 90° Drehen</button>
+              <button class="btn btn-secondary btn-sm" id="align-flip-btn">↔ Spiegeln</button>
+            </div>
+          </div>
+        </div>
+      </div>
     `;
+
+    // Event Listeners
+    body.querySelector('#align-all-btn').addEventListener('click', async () => {
+      this._alignActive = 'all';
+      body.querySelectorAll('.face-btn').forEach(b => b.classList.remove('active'));
+      try { await api.alignAll(); } catch (e) { console.error(e); }
+    });
 
     body.querySelectorAll('.face-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        body.querySelectorAll('.face-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
         this._alignActive = +btn.dataset.face;
+        this._renderAlign(body);
         try { await api.alignFace(this._alignActive); } catch (e) { console.error(e); }
       });
     });
 
+    if (typeof this._alignActive === 'number') {
+      body.querySelector('#align-rotate-btn').addEventListener('click', async () => {
+        try { await api.alignRotate(this._alignActive); } catch (e) { console.error(e); }
+      });
+      body.querySelector('#align-flip-btn').addEventListener('click', async () => {
+        try { await api.alignFlip(this._alignActive); } catch (e) { console.error(e); }
+      });
+    }
+
     body.querySelector('#align-stop-btn').addEventListener('click', async () => {
-      body.querySelectorAll('.face-btn').forEach(b => b.classList.remove('active'));
       this._alignActive = null;
+      this._renderAlign(body);
       try { await api.alignStop(); } catch (e) { console.error(e); }
     });
+  }
+
+  _generateNetHTML() {
+    // Einfache Netz-Darstellung (T-Shape)
+    //       [TOP]
+    // [LEFT][FRONT][RIGHT][BACK]
+    //       [BOTTOM]
+    
+    const C1="#f00", C2="#0f0", C3="#00f", C4="#ff0", C5="#f0f", C6="#0ff", C7="#f80", C8="#fff", _="#222";
+    
+    // Mini-Faces 5x5 Grid
+    const f = (id, label) => {
+      let grid = '';
+      for(let r=0; r<5; r++) {
+        for(let c=0; c<5; c++) {
+          let col = _;
+          
+          // Corner colors mapping
+          if (r===0 && c===0) { // Top-Left of face
+            if (id===0) col=C1; if (id===1) col=C6; if (id===2) col=C5; if (id===3) col=C2; if (id===4) col=C5; if (id===5) col=C3;
+          }
+          if (r===0 && c===4) { // Top-Right of face
+            if (id===0) col=C2; if (id===1) col=C5; if (id===2) col=C1; if (id===3) col=C6; if (id===4) col=C6; if (id===5) col=C4;
+          }
+          if (r===4 && c===0) { // Bottom-Left of face
+            if (id===0) col=C3; if (id===1) col=C8; if (id===2) col=C7; if (id===3) col=C4; if (id===4) col=C1; if (id===5) col=C7;
+          }
+          if (r===4 && c===4) { // Bottom-Right of face
+            if (id===0) col=C4; if (id===1) col=C7; if (id===2) col=C3; if (id===3) col=C8; if (id===4) col=C2; if (id===5) col=C8;
+          }
+
+          grid += `<div style="background:${col}; width:100%; height:100%"></div>`;
+        }
+      }
+      return `
+        <div class="net-face" style="width:60px; height:60px; background:#000; display:grid; grid-template-columns:repeat(5,1fr); gap:1px; border:1px solid #444; position:relative">
+          ${grid}
+          <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:10px; color:#fff; text-shadow:1px 1px 2px #000; pointer-events:none">${label}</div>
+        </div>
+      `;
+    };
+
+    return `
+      <div style="display:grid; grid-template-columns: repeat(4, 62px); grid-template-rows: repeat(3, 62px); gap:2px">
+        <div style="grid-column:2">${f(4, 'TOP')}</div>
+        <div style="grid-column:1; grid-row:2">${f(2, 'LEFT')}</div>
+        <div style="grid-column:2; grid-row:2">${f(0, 'FRONT')}</div>
+        <div style="grid-column:3; grid-row:2">${f(3, 'RIGHT')}</div>
+        <div style="grid-column:4; grid-row:2">${f(1, 'BACK')}</div>
+        <div style="grid-column:2; grid-row:3">${f(5, 'BOTTOM')}</div>
+      </div>
+    `;
+  }
+
+  _generatePatternHTML() {
+    let html = '';
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 5; c++) {
+        let color = '#000';
+        if (r === 0 && c === 0) color = '#fff';
+        else if (r === 0) color = '#f00';
+        else if (c === 0) color = '#0f0';
+        else if (r === 4 || c === 4) color = '#00f';
+        else if (r === 2 && c === 2) color = '#333';
+        html += `<div style="background:${color}; width:100%; height:100%"></div>`;
+      }
+    }
+    return html;
   }
 
   // Step 3: Animationen
