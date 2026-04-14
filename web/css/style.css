@@ -246,16 +246,19 @@ input[type=range]::-webkit-slider-thumb {
 #ws-status.connected { color: var(--success); }
 #ws-status.disconnected { color: var(--danger); }
 
-/* === Params Panel === */
-#params-panel {
-  background: var(--surface2);
-  border-radius: var(--radius);
-  padding: 8px 12px;
+/* === Params Bar === */
+#params-bar {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 10px 20px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
   flex-wrap: wrap;
+  min-height: 48px;
 }
+
+#params-bar.hidden { display: none; }
 
 .param-group {
   display: flex;
@@ -269,7 +272,7 @@ input[type=range]::-webkit-slider-thumb {
   white-space: nowrap;
 }
 
-.param-group input[type=range] { width: 100px; }
+.param-group input[type=range] { width: 110px; }
 
 .param-group .param-val {
   font-size: 12px;

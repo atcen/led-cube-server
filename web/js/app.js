@@ -24,7 +24,7 @@ const brightValEl  = document.getElementById('brightness-val');
 const statusPill   = document.getElementById('status-pill');
 const wsStatusEl   = document.getElementById('ws-status');
 const btnStop      = document.getElementById('btn-stop');
-const paramsPanel  = document.getElementById('params-panel');
+const paramsBar    = document.getElementById('params-bar');
 const cubeCanvas   = document.getElementById('cube-canvas');
 const toastCont    = document.getElementById('toast-container');
 const wizardEl     = document.getElementById('wizard-overlay');
@@ -173,11 +173,14 @@ async function startAnimation(name) {
 
 // ---- Params ----
 function renderParams(name) {
-  paramsPanel.innerHTML = '';
+  paramsBar.innerHTML = '';
+  paramsBar.classList.add('hidden');
   if (name === 'none' || !animations[name]) return;
 
   const params = animations[name].params || {};
   if (Object.keys(params).length === 0) return;
+
+  paramsBar.classList.remove('hidden');
 
   const savedParams = settings.animation_params?.[name] || {};
 
@@ -228,7 +231,7 @@ function renderParams(name) {
       input.addEventListener('change', _onParamChange.bind(null, name));
     }
 
-    paramsPanel.appendChild(group);
+    paramsBar.appendChild(group);
   }
 }
 
@@ -246,7 +249,7 @@ function _onParamChange(name) {
 
 function collectParams(name) {
   const result = {};
-  paramsPanel.querySelectorAll('input[data-param]').forEach(input => {
+  paramsBar.querySelectorAll('input[data-param]').forEach(input => {
     const key  = input.dataset.param;
     const type = input.dataset.type || 'float';
     if (type === 'hue') {
