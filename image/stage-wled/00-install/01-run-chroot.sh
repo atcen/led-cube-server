@@ -1,6 +1,5 @@
 #!/bin/bash -e
-# Läuft im Chroot (ARM-Emulation via QEMU).
-# Installiert Abhängigkeiten, richtet Services und Benutzer ein.
+# Läuft im Chroot (ARM-Emulation via QEMU in Docker).
 
 PROJECT_DIR="/home/pi/wled"
 
@@ -11,14 +10,14 @@ apt-get install -y --no-install-recommends \
     libevdev2 libudev1 \
     avahi-daemon avahi-utils \
     rsync
-
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 
-# ---- Python-Virtualenv ----
-sudo -u pi python3 -m venv "${PROJECT_DIR}/.venv"
-sudo -u pi "${PROJECT_DIR}/.venv/bin/pip" install --quiet --upgrade pip
-sudo -u pi "${PROJECT_DIR}/.venv/bin/pip" install --quiet -r "${PROJECT_DIR}/requirements.txt"
+# ---- Python-Virtualenv (als User pi) ----
+# In pi-gen-chroot kein sudo verfügbar → su benutzen
+su -s /bin/bash pi -c "python3 -m venv ${PROJECT_DIR}/.venv"
+su -s /bin/bash pi -c "${PROJECT_DIR}/.venv/bin/pip install --quiet --upgrade pip"
+su -s /bin/bash pi -c "${PROJECT_DIR}/.venv/bin/pip install --quiet -r ${PROJECT_DIR}/requirements.txt"
 
 # ---- Gruppe input für pynput ----
 usermod -aG input pi
@@ -30,15 +29,12 @@ systemctl enable wled-server
 systemctl enable wled-hotkeys
 systemctl enable avahi-daemon
 
-# ---- setup_all.py beim ersten Boot ausführen ----
-# Setzt LED-Maps und Segmente auf die Controller — muss nach Controller-Reset
-# wiederholt werden, ist aber beim ersten Start nötig.
+# ---- Einmaliger Setup-Service (LED-Maps auf Controller pushen) ----
 cat > /etc/systemd/system/wled-setup-controllers.service << 'EOF'
 [Unit]
 Description=WLED Cube – Controller einmalig einrichten
 After=network-online.target wled-server.service
 Wants=network-online.target
-# Nur einmal ausführen (Datei wird nach Erfolg erstellt)
 ConditionPathExists=!/var/lib/wled-setup-done
 
 [Service]

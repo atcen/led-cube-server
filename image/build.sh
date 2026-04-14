@@ -50,9 +50,12 @@ rsync -a \
     "${REPO_ROOT}/" \
     "${STAGE_FILES}/"
 
-# ---- Eigenen Stage verlinken ----
-log "Stage vorbereiten…"
-ln -sfn "${SCRIPT_DIR}/stage-wled" "${PIGEN_DIR}/stage-wled"
+# ---- Stage in pi-gen kopieren ----
+# Symlinks funktionieren nicht: Docker mountet nur das pi-gen-Verzeichnis,
+# Symlinks nach außen wären innerhalb des Containers nicht auflösbar.
+log "Stage in pi-gen kopieren…"
+rm -rf "${PIGEN_DIR}/stage-wled"
+cp -r "${SCRIPT_DIR}/stage-wled" "${PIGEN_DIR}/stage-wled"
 cp "${SCRIPT_DIR}/config" "${PIGEN_DIR}/config"
 
 # stage3–5 überspringen (kein Desktop)
