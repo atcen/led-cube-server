@@ -3,6 +3,7 @@
  */
 
 import api from './api.js';
+import { renderHotkeysEditor } from './hotkeys_editor.js';
 
 const STEPS = [
   'Willkommen',
@@ -195,51 +196,30 @@ export class Wizard {
 
   // Step 4: Shortcuts
   async _renderShortcuts(body) {
-    if (!this.settings.keyboard_shortcuts) {
+    if (!Object.keys(this.animations).length) {
+      try { this.animations = await api.animations(); } catch (e) { /* ignore */ }
+    }
+    if (!this.settings.hotkey_shortcuts) {
       try {
         const s = await api.getSettings();
-        this.settings = s;
+        this.settings = { ...this.settings, ...s };
       } catch (e) { /* ignore */ }
     }
-    const sc = this.settings.keyboard_shortcuts || {
-      enabled: true, next: 'ArrowRight', stop: 'Escape', random: 'r', per_animation: {}
-    };
+
+    const enabledKeys = this.settings.enabled_animations || Object.keys(this.animations);
+    const animNames   = Object.keys(this.animations).filter(n => enabledKeys.includes(n));
 
     body.innerHTML = `
-      <h3>Tastaturkürzel</h3>
-      <p>Klicke auf eine Taste und drücke dann die gewünschte Taste.</p>
-      <div class="shortcut-row">
-        <span class="shortcut-label">Nächste Animation</span>
-        <span class="key-capture" data-action="next">${sc.next || '—'}</span>
-      </div>
-      <div class="shortcut-row">
-        <span class="shortcut-label">Stoppen</span>
-        <span class="key-capture" data-action="stop">${sc.stop || '—'}</span>
-      </div>
-      <div class="shortcut-row">
-        <span class="shortcut-label">Zufällige Animation</span>
-        <span class="key-capture" data-action="random">${sc.random || '—'}</span>
-      </div>
+      <h3>Hotkeys (Raspberry Pi Daemon)</h3>
+      <p>Diese Kürzel steuern den Würfel direkt vom Pi — das Web UI muss nicht offen sein.</p>
+      <div id="wiz-hk-editor"></div>
     `;
 
-    this._captureKeys = { ...sc };
-
-    body.querySelectorAll('.key-capture').forEach(el => {
-      el.addEventListener('click', () => {
-        body.querySelectorAll('.key-capture').forEach(e => e.classList.remove('capturing'));
-        el.classList.add('capturing');
-        el.textContent = '…';
-        const handler = (ev) => {
-          ev.preventDefault();
-          el.textContent = ev.key;
-          el.classList.remove('capturing');
-          this._captureKeys[el.dataset.action] = ev.key;
-          this.settings.keyboard_shortcuts = { ...this._captureKeys };
-          document.removeEventListener('keydown', handler, true);
-        };
-        document.addEventListener('keydown', handler, true);
-      });
-    });
+    this._getHotkeyValues = renderHotkeysEditor(
+      body.querySelector('#wiz-hk-editor'),
+      this.settings.hotkey_shortcuts || {},
+      animNames,
+    );
   }
 
   // Step 5: Fertig
@@ -275,6 +255,10 @@ export class Wizard {
 
   async _finish() {
     this.settings.setup_complete = true;
+    // Hotkey-Werte aus dem Editor übernehmen (falls Schritt 4 besucht wurde)
+    if (this._getHotkeyValues) {
+      this.settings.hotkey_shortcuts = this._getHotkeyValues();
+    }
     try {
       await api.saveSettings(this.settings);
     } catch (e) {
