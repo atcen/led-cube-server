@@ -6,3 +6,5 @@ __pycache__/
 venv/
 *.venv
 settings.json
+image/.pi-gen/
+image/deploy/

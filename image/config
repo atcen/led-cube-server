@@ -1,0 +1,24 @@
+# pi-gen Konfiguration für WLED Cube Image
+# Doku: https://github.com/RPi-Distro/pi-gen
+
+IMG_NAME="wled-cube"
+RELEASE="bookworm"
+DEPLOY_COMPRESSION="xz"
+
+TARGET_HOSTNAME="wled-cube"
+LOCALE_DEFAULT="de_DE.UTF-8"
+KEYBOARD_KEYMAP="de"
+KEYBOARD_LAYOUT="German"
+TIMEZONE_DEFAULT="Europe/Berlin"
+
+FIRST_USER_NAME="pi"
+FIRST_USER_PASS="wled2024"   # Bitte nach erstem Login ändern
+
+ENABLE_SSH=1
+
+WPA_ESSID="502BadGateway"
+WPA_PASSWORD="Vierschau4"
+WPA_COUNTRY="DE"
+
+# Nur stage0–2 (Lite) + eigener Stage, kein Desktop
+STAGE_LIST="stage0 stage1 stage2 stage-wled"
