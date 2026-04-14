@@ -6,8 +6,8 @@ PROJECT_DIR="/home/pi/wled"
 # ---- Pakete ----
 apt-get update -qq
 apt-get install -y --no-install-recommends \
-    python3-venv python3-pip \
-    libevdev2 libudev1 \
+    python3-venv python3-pip python3-dev \
+    libevdev2 libevdev-dev libudev1 \
     avahi-daemon avahi-utils \
     rsync
 apt-get clean

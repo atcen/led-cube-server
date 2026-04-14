@@ -25,12 +25,19 @@ command -v docker >/dev/null || error "Docker nicht gefunden. Bitte installieren
 command -v git    >/dev/null || error "git nicht gefunden."
 
 # ---- pi-gen holen / aktualisieren ----
+# Sicherstellen dass wir den arm64-Branch haben
+CURRENT_BRANCH=""
 if [ -d "${PIGEN_DIR}/.git" ]; then
+    CURRENT_BRANCH=$(git -C "${PIGEN_DIR}" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+fi
+
+if [ "${CURRENT_BRANCH}" = "arm64" ]; then
     log "pi-gen aktualisieren…"
     git -C "${PIGEN_DIR}" pull --ff-only -q
 else
-    log "pi-gen klonen…"
-    git clone --depth 1 https://github.com/RPi-Distro/pi-gen.git "${PIGEN_DIR}"
+    [ -d "${PIGEN_DIR}" ] && rm -rf "${PIGEN_DIR}"
+    log "pi-gen klonen (arm64-Branch)…"
+    git clone --depth 1 --branch arm64 https://github.com/RPi-Distro/pi-gen.git "${PIGEN_DIR}"
 fi
 
 # ---- Projektdateien in Stage-files/ kopieren ----

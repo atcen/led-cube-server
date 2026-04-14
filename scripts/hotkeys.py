@@ -2,7 +2,9 @@
 """
 WLED Cube – Globaler Hotkey-Daemon für Raspberry Pi.
 
-Jeder Hotkey ist ein einzelner Tastendruck (keine Kombinationen).
+Liest Tastatureingaben direkt via evdev (/dev/input) — funktioniert
+auf X11, Wayland und headless gleichermaßen.
+
 Konfiguration über das Web UI: Einstellungen → Hotkeys.
 
 Starten:
@@ -20,13 +22,13 @@ import json
 import logging
 import pathlib
 import random
+import select
 import sys
 import time
 from typing import Optional, Callable
 
 import httpx
-from pynput import keyboard
-from pynput.keyboard import Key, KeyCode
+from evdev import InputDevice, ecodes, list_devices
 
 log = logging.getLogger("wled-hotkeys")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(message)s")
@@ -42,48 +44,50 @@ DEFAULTS: dict = {
     "per_animation": {},
 }
 
-# Mapping von pynput-Key-Strings zu Key-Enum-Werten
-_KEY_MAP: dict[str, Key] = {
-    "<right>":     Key.right,
-    "<left>":      Key.left,
-    "<up>":        Key.up,
-    "<down>":      Key.down,
-    "<esc>":       Key.esc,
-    "<enter>":     Key.enter,
-    "<backspace>": Key.backspace,
-    "<delete>":    Key.delete,
-    "<space>":     Key.space,
-    "<tab>":       Key.tab,
-    "<page_up>":   Key.page_up,
-    "<page_down>": Key.page_down,
-    "<home>":      Key.home,
-    "<end>":       Key.end,
+# Mapping von pynput-kompatiblen Key-Strings zu evdev-Keycodes
+_KEY_MAP: dict[str, int] = {
+    "<right>":     ecodes.KEY_RIGHT,
+    "<left>":      ecodes.KEY_LEFT,
+    "<up>":        ecodes.KEY_UP,
+    "<down>":      ecodes.KEY_DOWN,
+    "<esc>":       ecodes.KEY_ESC,
+    "<enter>":     ecodes.KEY_ENTER,
+    "<backspace>": ecodes.KEY_BACKSPACE,
+    "<delete>":    ecodes.KEY_DELETE,
+    "<space>":     ecodes.KEY_SPACE,
+    "<tab>":       ecodes.KEY_TAB,
+    "<page_up>":   ecodes.KEY_PAGEUP,
+    "<page_down>": ecodes.KEY_PAGEDOWN,
+    "<home>":      ecodes.KEY_HOME,
+    "<end>":       ecodes.KEY_END,
 }
 for _i in range(1, 13):
-    _KEY_MAP[f"<f{_i}>"] = getattr(Key, f"f{_i}")
+    _KEY_MAP[f"<f{_i}>"] = getattr(ecodes, f"KEY_F{_i}")
+
+# Einzelne Zeichen a–z, 0–9
+for _c in "abcdefghijklmnopqrstuvwxyz":
+    _KEY_MAP[_c] = getattr(ecodes, f"KEY_{_c.upper()}")
+for _d in "0123456789":
+    _KEY_MAP[_d] = getattr(ecodes, f"KEY_{_d}", None) or getattr(ecodes, f"KEY_KP{_d}", None)
 
 
-def parse_key(key_str: str) -> Key | KeyCode | None:
-    """Konvertiert einen Key-String in ein pynput Key/KeyCode-Objekt."""
-    if not key_str:
-        return None
-    if key_str in _KEY_MAP:
-        return _KEY_MAP[key_str]
-    if len(key_str) == 1:
-        return KeyCode.from_char(key_str)
-    return None
+def parse_key(key_str: str) -> Optional[int]:
+    return _KEY_MAP.get(key_str)
 
 
-def key_matches(pressed: Key | KeyCode, key_str: str) -> bool:
-    """Prüft ob ein gedrückter Key dem konfigurierten Key-String entspricht."""
-    target = parse_key(key_str)
-    if target is None:
-        return False
-    if isinstance(target, Key):
-        return pressed == target
-    if isinstance(target, KeyCode) and isinstance(pressed, KeyCode):
-        return pressed.char == target.char
-    return False
+def find_keyboards() -> list[InputDevice]:
+    devices = []
+    for path in list_devices():
+        try:
+            dev = InputDevice(path)
+            caps = dev.capabilities()
+            # Gerät muss EV_KEY haben und mindestens KEY_A kennen
+            if ecodes.EV_KEY in caps and ecodes.KEY_A in caps[ecodes.EV_KEY]:
+                devices.append(dev)
+                log.info(f"Tastatur gefunden: {dev.path} ({dev.name})")
+        except Exception:
+            pass
+    return devices
 
 
 def load_shortcuts() -> dict:
@@ -102,9 +106,9 @@ def load_shortcuts() -> dict:
 
 class HotkeyDaemon:
     def __init__(self, server_url: str) -> None:
-        self.server          = server_url.rstrip("/")
-        self.client          = httpx.Client(timeout=3.0)
-        self._animations:    list[str]    = []
+        self.server           = server_url.rstrip("/")
+        self.client           = httpx.Client(timeout=3.0)
+        self._animations:     list[str]   = []
         self._last_animation: str | None  = None
         self._refresh_state()
 
@@ -181,10 +185,8 @@ class HotkeyDaemon:
         self._last_animation = name
 
 
-def build_action_map(daemon: HotkeyDaemon, shortcuts: dict) -> list[tuple[str, Callable]]:
-    """Gibt eine Liste von (key_str, action) zurück."""
-    pairs: list[tuple[str, Callable]] = []
-
+def build_action_map(daemon: HotkeyDaemon, shortcuts: dict) -> list[tuple[int, Callable]]:
+    pairs: list[tuple[int, Callable]] = []
     for action_name, cmd in [
         ("stop",   daemon.cmd_stop),
         ("on",     daemon.cmd_on),
@@ -192,12 +194,14 @@ def build_action_map(daemon: HotkeyDaemon, shortcuts: dict) -> list[tuple[str, C
         ("random", daemon.cmd_random),
     ]:
         key_str = shortcuts.get(action_name)
-        if key_str and parse_key(key_str) is not None:
-            pairs.append((key_str, cmd))
+        code = parse_key(key_str) if key_str else None
+        if code is not None:
+            pairs.append((code, cmd))
 
     for anim_name, key_str in shortcuts.get("per_animation", {}).items():
-        if key_str and parse_key(key_str) is not None:
-            pairs.append((key_str, lambda n=anim_name: daemon.cmd_animation(n)))
+        code = parse_key(key_str) if key_str else None
+        if code is not None:
+            pairs.append((code, lambda n=anim_name: daemon.cmd_animation(n)))
 
     return pairs
 
@@ -216,34 +220,70 @@ def run(server_url: str) -> None:
         log.warning("Keine Hotkeys konfiguriert. Bitte im Web UI unter Einstellungen → Hotkeys einrichten.")
 
     log.info("Aktive Tastenkürzel:")
-    for key_str, fn in action_map:
-        log.info(f"  {key_str:20s} → {getattr(fn, '__name__', str(fn))}")
+    key_name_map = {v: k for k, v in _KEY_MAP.items()}
+    for code, fn in action_map:
+        log.info(f"  {key_name_map.get(code, str(code)):20s} → {getattr(fn, '__name__', str(fn))}")
 
-    def on_press(key: Key | KeyCode) -> None:
-        for key_str, action in action_map:
-            if key_matches(key, key_str):
-                action()
-                return  # nur erste Übereinstimmung auslösen
+    keyboards = find_keyboards()
+    if not keyboards:
+        log.error("Keine Tastatur gefunden unter /dev/input. User in Gruppe 'input'?")
+        sys.exit(1)
 
-    listener = keyboard.Listener(on_press=on_press, suppress=False)
-    listener.start()
+    code_to_action = {code: fn for code, fn in action_map}
+    fd_to_dev = {dev.fd: dev for dev in keyboards}
+
     log.info("Daemon läuft. Strg+C zum Beenden.")
 
-    try:
-        while True:
-            time.sleep(30)
+    last_refresh = time.monotonic()
+    last_settings_check = time.monotonic()
+
+    while True:
+        try:
+            readable, _, _ = select.select(fd_to_dev, [], [], 5.0)
+        except (OSError, ValueError):
+            # Gerät getrennt — neu scannen
+            log.warning("Eingabegerät getrennt, scanne neu…")
+            for dev in fd_to_dev.values():
+                try:
+                    dev.close()
+                except Exception:
+                    pass
+            time.sleep(2)
+            keyboards = find_keyboards()
+            fd_to_dev = {dev.fd: dev for dev in keyboards}
+            continue
+
+        for fd in readable:
+            dev = fd_to_dev[fd]
+            try:
+                for event in dev.read():
+                    if event.type == ecodes.EV_KEY and event.value == 1:  # key down
+                        action = code_to_action.get(event.code)
+                        if action:
+                            action()
+            except OSError:
+                pass
+
+        now = time.monotonic()
+
+        # Server-State alle 30s auffrischen
+        if now - last_refresh > 30:
             daemon._refresh_state()
-            # Settings neu laden wenn geändert
+            last_refresh = now
+
+        # Settings alle 5s auf Änderungen prüfen
+        if now - last_settings_check > 5:
+            last_settings_check = now
             new_sc = load_shortcuts()
             if new_sc != shortcuts:
                 log.info("Settings geändert — Hotkeys werden neu geladen…")
-                listener.stop()
+                for dev in fd_to_dev.values():
+                    try:
+                        dev.close()
+                    except Exception:
+                        pass
                 run(server_url)
                 return
-    except KeyboardInterrupt:
-        log.info("Beende.")
-    finally:
-        listener.stop()
 
 
 if __name__ == "__main__":

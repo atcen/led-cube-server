@@ -2,7 +2,7 @@
 # Doku: https://github.com/RPi-Distro/pi-gen
 
 IMG_NAME="wled-cube"
-RELEASE="bookworm"
+RELEASE="trixie"
 DEPLOY_COMPRESSION="xz"
 
 TARGET_HOSTNAME="wled-cube"

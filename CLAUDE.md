@@ -33,7 +33,7 @@ pip install -r requirements.txt
 uvicorn server.server:app --host 0.0.0.0 --port 8000
 ```
 
-Web UI: `http://localhost:8000` → `http://localhost:8000/ui/index.html`
+Web UI: `http://localhost:8000` (statische Dateien aus `web/` werden direkt unter `/` gemountet)
 
 ## API
 
@@ -128,6 +128,31 @@ REGISTRY["meine"] = MeineAnimation
 ### Hotkey-Daemon
 
 `scripts/hotkeys.py` läuft auf dem Raspberry Pi, liest Konfiguration aus `settings.hotkey_shortcuts` (gespeichert via Web UI → Einstellungen). Ruft `/animation/{name}` auf (Hardware, kein Preview). Als systemd-Service betreibbar.
+
+Verwendet **`evdev`** (direkt `/dev/input`) statt pynput — funktioniert auf Wayland, X11 und headless. User muss in Gruppe `input` sein (`sudo usermod -aG input pi`). Key-Strings im pynput-Format (`<f10>`, `<right>`, `a`) werden intern auf evdev-Keycodes gemappt.
+
+## Raspberry Pi Deployment
+
+Pi läuft auf `192.168.10.205` (pi:admin), Hostname `wled-cube`. Raspberry Pi OS mit Desktop (Wayland).
+
+**Projekt deployen:**
+```bash
+rsync -av --exclude='.git' --exclude='.venv' --exclude='__pycache__' \
+  --exclude='image/.pi-gen' --exclude='image/deploy' --exclude='settings.json' \
+  -e "ssh -o PreferredAuthentications=password" \
+  ./ pi@192.168.10.205:/home/pi/wled/
+```
+
+**Services nach Änderungen neu starten:**
+```bash
+ssh pi@192.168.10.205 "sudo systemctl restart wled-server wled-hotkeys"
+ssh pi@192.168.10.205 "journalctl -fu wled-server"
+```
+
+**Logs:**
+```bash
+ssh pi@192.168.10.205 "journalctl -fu wled-hotkeys"
+```
 
 ## Setup nach Controller-Reset
 
