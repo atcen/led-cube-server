@@ -90,7 +90,7 @@ def _broadcast_frame(face_buffers: dict[int, bytes]) -> None:
             asyncio.ensure_future(ws.send_bytes(frame))
         except Exception:
             dead.add(ws)
-    _ws_clients -= dead
+    _ws_clients.difference_update(dead)
 
 
 # --- FastAPI App ---
@@ -156,15 +156,19 @@ async def status():
 async def list_animations():
     result = {}
     for name, cls in REGISTRY.items():
-        sig    = inspect.signature(cls.__init__)
-        params = {}
-        for p_name, p in sig.parameters.items():
-            if p_name == "self":
-                continue
-            params[p_name] = {
-                "default": p.default if p.default is not inspect.Parameter.empty else None
-            }
-        result[name] = {"params": params}
+        class_params = getattr(cls, "PARAMS", None)
+        if class_params:
+            result[name] = {"params": class_params}
+        else:
+            # Fallback: Introspection
+            sig    = inspect.signature(cls.__init__)
+            params = {}
+            for p_name, p in sig.parameters.items():
+                if p_name == "self":
+                    continue
+                default = p.default if p.default is not inspect.Parameter.empty else None
+                params[p_name] = {"type": "float", "default": default, "label": p_name}
+            result[name] = {"params": params}
     return result
 
 
@@ -218,6 +222,45 @@ async def controllers_status():
 
 
 # --- Ausrichtung ---
+@app.post("/align/all")
+async def align_all():
+    """Alle Flächen gleichzeitig mit Ausrichtungsmustern — für Preview-Vergleich."""
+    global _align_face
+    _align_face = None
+    cube.fill([0, 0, 0])
+    # Jede Fläche bekommt eine eigene Farbe für Ecken/Rand
+    face_colors = [
+        ([255, 0,   0  ], [180, 0,   0  ]),   # 0 FRONT:  Rot
+        ([255, 255, 0  ], [180, 180, 0  ]),   # 1 BACK:   Gelb
+        ([0,   200, 0  ], [0,   120, 0  ]),   # 2 LEFT:   Grün
+        ([0,   200, 200], [0,   120, 120]),   # 3 RIGHT:  Cyan
+        ([0,   80,  255], [0,   50,  180]),   # 4 TOP:    Blau
+        ([200, 0,   200], [120, 0,   120]),   # 5 BOTTOM: Magenta
+    ]
+    for face_id, (corner_col, edge_col) in enumerate(face_colors):
+        for r in range(5):
+            for c in range(5):
+                if (r == 0 or r == 4) and (c == 0 or c == 4):
+                    cube.set(face_id, r, c, corner_col)
+                elif r == 2 and c == 2:
+                    cube.set(face_id, r, c, [255, 255, 255])
+                elif r == 0 or r == 4 or c == 0 or c == 4:
+                    cube.set(face_id, r, c, edge_col)
+    face_buffers = render(cube)
+    _broadcast_frame(face_buffers)
+    return {"aligning": "all"}
+
+
+@app.post("/align/stop")
+async def align_stop():
+    global _align_face
+    _align_face = None
+    cube.fill([0, 0, 0])
+    face_buffers = render(cube)
+    _broadcast_frame(face_buffers)
+    return {"status": "stopped"}
+
+
 @app.post("/align/{face_id}")
 async def align_face(face_id: int):
     global _align_face
@@ -237,16 +280,6 @@ async def align_face(face_id: int):
     face_buffers = render(cube)
     _broadcast_frame(face_buffers)
     return {"aligning": face_id}
-
-
-@app.post("/align/stop")
-async def align_stop():
-    global _align_face
-    _align_face = None
-    cube.fill([0, 0, 0])
-    face_buffers = render(cube)
-    _broadcast_frame(face_buffers)
-    return {"status": "stopped"}
 
 
 # StaticFiles zuletzt mounten (nach allen anderen Endpoints)

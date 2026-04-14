@@ -1,3 +1,4 @@
+import colorsys
 import math
 
 from ..config import BLOCK_WIDTHS, LEDS_TOTAL, VIRTUAL_TO_BLOCK, VLED_POS_IN_BLOCK
@@ -5,7 +6,6 @@ from ..cube import Cube
 from .base import Animation
 
 BLACK = [0, 0, 0]
-HEART = [220, 40, 70]
 PANEL_W = sum(BLOCK_WIDTHS)
 PANEL_H = 15
 HEART_WIDTH = 5.0
@@ -72,8 +72,17 @@ def _is_heart_pixel(face: int, phys_row: int, phys_col: int) -> bool:
 
 class HeartAnimation(Animation):
     name = "heart"
+    PARAMS = {
+        "hue": {"type": "hue", "default": 0.96, "label": "Herzfarbe"},
+    }
+
+    def __init__(self, hue: float = 0.96):
+        self.hue = hue   # 0.96=Rot-Rosa (default), 0.0=Rot, 0.33=Grün, 0.5=Cyan
 
     def start(self, cube: Cube) -> None:
+        r, g, b = colorsys.hsv_to_rgb(self.hue, 0.82, 0.86)
+        heart_color = [round(r * 255), round(g * 255), round(b * 255)]
+
         cube.fill(BLACK)
         cube.leds.clear()
 
@@ -81,7 +90,7 @@ class HeartAnimation(Animation):
             for vled in range(LEDS_TOTAL):
                 phys_row, phys_col = _physical_position(vled)
                 if _is_heart_pixel(face, phys_row, phys_col):
-                    cube.leds[(face, vled)] = HEART
+                    cube.leds[(face, vled)] = heart_color
 
     def tick(self, cube: Cube, dt: float, t: float) -> None:
         pass

@@ -20,10 +20,16 @@ DEATH_DURATION = 1.0 # Sekunden roter Screen
 
 class SnakeAnimation(Animation):
     name = "snake"
+    PARAMS = {
+        "start_length": {"type": "int",   "default": 5,    "min": 1,    "max": 20,  "step": 1,    "label": "Startlänge"},
+        "speed":        {"type": "float", "default": 0.5,  "min": 0.05, "max": 3.0, "step": 0.05, "label": "Geschwindigkeit", "description": "Sekunden pro Schritt"},
+        "hue":          {"type": "hue",   "default": 0.08, "label": "Körperfarbe"},
+    }
 
-    def __init__(self, start_length: int = 5, speed: float = 0.5):
+    def __init__(self, start_length: int = 5, speed: float = 0.5, hue: float = 0.08):
         self.start_length = start_length
         self.speed        = speed   # Sekunden pro Schritt
+        self.hue          = hue     # Basis-Farbton des Körpers (0=Rot, 0.08=Orange, 0.33=Grün, 0.66=Blau)
 
     def start(self, cube: Cube) -> None:
         cube.fill(BLACK)
@@ -47,11 +53,11 @@ class SnakeAnimation(Animation):
         return random.choice(free)
 
     def _body_color(self, i: int) -> list:
-        """Farbgradient: Kopf=weiß, Körper gelb→rot→dunkel."""
+        """Farbgradient: Kopf=weiß, Körper hue→dunkel."""
         if i == 0:
             return [255, 255, 255]
         t   = (i - 1) / max(self.length - 2, 1)
-        hue = 0.08 * (1.0 - t)
+        hue = self.hue * (1.0 - t)
         val = 1.0 - t * 0.8
         r, g, b = colorsys.hsv_to_rgb(hue, 1.0, val)
         return [round(r * 255), round(g * 255), round(b * 255)]

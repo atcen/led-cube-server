@@ -278,6 +278,56 @@ input[type=range]::-webkit-slider-thumb {
   text-align: right;
 }
 
+/* Hue picker */
+.hue-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hue-slider {
+  background: linear-gradient(to right,
+    hsl(0,100%,50%), hsl(30,100%,50%), hsl(60,100%,50%), hsl(90,100%,50%),
+    hsl(120,100%,50%), hsl(150,100%,50%), hsl(180,100%,50%), hsl(210,100%,50%),
+    hsl(240,100%,50%), hsl(270,100%,50%), hsl(300,100%,50%), hsl(330,100%,50%),
+    hsl(360,100%,50%)
+  ) !important;
+  width: 110px !important;
+  height: 8px !important;
+  border-radius: 4px !important;
+}
+
+.hue-slider::-webkit-slider-thumb {
+  background: #fff !important;
+  border: 2px solid rgba(0,0,0,0.4) !important;
+  box-shadow: 0 0 3px rgba(0,0,0,0.5);
+}
+
+.hue-preview {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+
+/* Text param input */
+.param-text {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 12px;
+  padding: 3px 8px;
+  max-width: 160px;
+  outline: none;
+}
+
+.param-text:focus {
+  border-color: var(--accent);
+}
+
 /* === Three.js Canvas === */
 #cube-canvas {
   outline: none;

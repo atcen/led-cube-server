@@ -37,6 +37,11 @@ PIXEL_TO_VLED = _build_pixel_map()
 
 class WatercolorAnimation(Animation):
     name = "watercolor"
+    PARAMS = {
+        "hit_interval": {"type": "float", "default": 0.9,  "min": 0.1, "max": 5.0, "step": 0.1,  "label": "Tropfen-Intervall", "description": "Sekunden zwischen Tropfen"},
+        "diffusion":    {"type": "float", "default": 0.22, "min": 0.0, "max": 0.8, "step": 0.02, "label": "Diffusion"},
+        "fade":         {"type": "float", "default": 0.12, "min": 0.0, "max": 0.5, "step": 0.01, "label": "Ausblenden"},
+    }
 
     def __init__(
         self,

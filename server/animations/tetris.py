@@ -32,10 +32,16 @@ SPAWN_COL = 1
 
 class TetrisAnimation(Animation):
     name = "tetris"
+    PARAMS = {
+        "speed": {"type": "float", "default": 0.6, "min": 0.1, "max": 3.0, "step": 0.1, "label": "Fallgeschwindigkeit", "description": "Sekunden pro Fall-Schritt"},
+    }
+
+    def __init__(self, speed: float = 0.6):
+        self.speed = speed   # Sekunden pro Fall-Schritt
 
     def start(self, cube: Cube) -> None:
         super().start(cube)
-        self.fall_speed = 0.6
+        self.fall_speed = self.speed
         self._reset_game()
 
     def _reset_game(self) -> None:

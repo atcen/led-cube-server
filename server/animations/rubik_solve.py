@@ -159,6 +159,12 @@ def _apply_move(stickers: list[dict], move: tuple[str, int, int]) -> list[dict]:
 
 class RubikSolveAnimation(Animation):
     name = "rubik_solve"
+    PARAMS = {
+        "scramble_moves": {"type": "int",   "default": 18,  "min": 1,   "max": 40,  "step": 1,   "label": "Züge (Mischen)"},
+        "turn_duration":  {"type": "float", "default": 0.7, "min": 0.1, "max": 3.0, "step": 0.1, "label": "Dreh-Dauer"},
+        "turn_pause":     {"type": "float", "default": 0.22,"min": 0.0, "max": 1.0, "step": 0.05,"label": "Pause zwischen Zügen"},
+        "solved_pause":   {"type": "float", "default": 3.0, "min": 0.5, "max": 10.0,"step": 0.5, "label": "Gelöst-Pause"},
+    }
 
     def __init__(
         self,

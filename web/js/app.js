@@ -90,6 +90,23 @@ async function init() {
   // Wizard über Einstellungs-Button erneut öffnen
   document.getElementById('btn-wizard').addEventListener('click', () => wizard.show());
 
+  // Ausrichtungs-Button
+  let alignActive = false;
+  const btnAlign = document.getElementById('btn-align');
+  btnAlign.addEventListener('click', () => {
+    if (alignActive) {
+      fetch('/align/stop', { method: 'POST' }).catch(console.error);
+      btnAlign.textContent = 'Ausrichten';
+      btnAlign.classList.remove('active');
+      alignActive = false;
+    } else {
+      fetch('/align/all', { method: 'POST' }).catch(console.error);
+      btnAlign.textContent = 'Ausrichten ✕';
+      btnAlign.classList.add('active');
+      alignActive = true;
+    }
+  });
+
   // Event-Listener
   brightnessEl.addEventListener('input', () => {
     brightValEl.textContent = brightnessEl.value;
@@ -165,51 +182,82 @@ function renderParams(name) {
   const savedParams = settings.animation_params?.[name] || {};
 
   for (const [pName, pInfo] of Object.entries(params)) {
-    const def = savedParams[pName] ?? pInfo.default ?? 0;
-    const isFloat = typeof def === 'number' && !Number.isInteger(def);
+    const type  = pInfo.type || 'float';
+    const def   = savedParams[pName] ?? pInfo.default ?? 0;
+    const label = pInfo.label || pName;
 
     const group = document.createElement('div');
     group.className = 'param-group';
 
-    const min  = 0;
-    const max  = isFloat ? 1 : 20;
-    const step = isFloat ? 0.01 : 1;
-
-    group.innerHTML = `
-      <label>${pName}</label>
-      <input type="range" min="${min}" max="${max}" step="${step}" value="${def}" data-param="${pName}">
-      <span class="param-val">${def}</span>
-    `;
-
-    const input = group.querySelector('input');
-    const val   = group.querySelector('.param-val');
-
-    input.addEventListener('input', () => {
-      val.textContent = input.value;
-    });
-
-    input.addEventListener('change', () => {
-      const currentParams = collectParams(name);
-      api.startWithParams(name, currentParams).catch(console.error);
-
-      // Param-Einstellungen speichern
-      if (!settings.animation_params) settings.animation_params = {};
-      settings.animation_params[name] = currentParams;
-      api.saveSettings({ animation_params: settings.animation_params }).catch(() => {});
-    });
+    if (type === 'hue') {
+      const hue360 = Math.round(def * 360);
+      group.innerHTML = `
+        <label>${label}</label>
+        <div class="hue-picker">
+          <input type="range" class="hue-slider" min="0" max="360" step="1" value="${hue360}"
+                 data-param="${pName}" data-type="hue">
+          <div class="hue-preview" style="background:hsl(${hue360},100%,50%)"></div>
+        </div>
+      `;
+      const input   = group.querySelector('input');
+      const preview = group.querySelector('.hue-preview');
+      input.addEventListener('input', () => {
+        preview.style.background = `hsl(${input.value},100%,50%)`;
+      });
+      input.addEventListener('change', _onParamChange.bind(null, name));
+    } else if (type === 'str') {
+      group.innerHTML = `
+        <label>${label}</label>
+        <input type="text" class="param-text" value="${def}" data-param="${pName}" data-type="str">
+      `;
+      group.querySelector('input').addEventListener('change', _onParamChange.bind(null, name));
+    } else {
+      const min  = pInfo.min  ?? 0;
+      const max  = pInfo.max  ?? (typeof def === 'number' ? Math.max(20, def * 2) : 20);
+      const step = pInfo.step ?? (type === 'int' ? 1 : 0.05);
+      const disp = _fmtVal(def, step);
+      group.innerHTML = `
+        <label>${label}</label>
+        <input type="range" min="${min}" max="${max}" step="${step}" value="${def}"
+               data-param="${pName}" data-type="${type}">
+        <span class="param-val">${disp}</span>
+      `;
+      const input = group.querySelector('input');
+      const val   = group.querySelector('.param-val');
+      input.addEventListener('input', () => { val.textContent = _fmtVal(input.value, step); });
+      input.addEventListener('change', _onParamChange.bind(null, name));
+    }
 
     paramsPanel.appendChild(group);
   }
 }
 
+function _fmtVal(v, step) {
+  return parseFloat(step) < 1 ? parseFloat(v).toFixed(2) : parseInt(v, 10);
+}
+
+function _onParamChange(name) {
+  const currentParams = collectParams(name);
+  api.startWithParams(name, currentParams).catch(console.error);
+  if (!settings.animation_params) settings.animation_params = {};
+  settings.animation_params[name] = currentParams;
+  api.saveSettings({ animation_params: settings.animation_params }).catch(() => {});
+}
+
 function collectParams(name) {
   const result = {};
   paramsPanel.querySelectorAll('input[data-param]').forEach(input => {
-    const key = input.dataset.param;
-    const val = input.step && parseFloat(input.step) < 1
-      ? parseFloat(input.value)
-      : parseInt(input.value, 10);
-    result[key] = val;
+    const key  = input.dataset.param;
+    const type = input.dataset.type || 'float';
+    if (type === 'hue') {
+      result[key] = Math.round(parseFloat(input.value)) / 360;
+    } else if (type === 'int') {
+      result[key] = parseInt(input.value, 10);
+    } else if (type === 'str') {
+      result[key] = input.value;
+    } else {
+      result[key] = parseFloat(input.value);
+    }
   });
   return result;
 }
@@ -236,6 +284,7 @@ function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${location.host}/ws`);
   ws.binaryType = 'arraybuffer';
+  window._ws_debug = ws;
 
   ws.onopen = () => {
     wsStatusEl.textContent = '● Live';
@@ -244,7 +293,7 @@ function connectWS() {
 
   ws.onmessage = (ev) => {
     if (cube3d && ev.data instanceof ArrayBuffer) {
-      cube3d.updateFrame(ev.data);
+      cube3d.setFrame(ev.data);
     }
   };
 

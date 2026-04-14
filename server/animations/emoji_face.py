@@ -113,6 +113,9 @@ def render_emoji(emoji_char: str) -> dict:
 
 class EmojiFaceAnimation(Animation):
     name = "emoji_face"
+    PARAMS = {
+        "emoji": {"type": "str", "default": "😀", "label": "Emoji"},
+    }
 
     def __init__(self, emoji: str = "😀", faces: str = "all"):
         self.emoji_char   = emoji

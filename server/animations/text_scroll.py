@@ -188,6 +188,10 @@ FONT: dict[str, list] = {
 
 class TextScrollAnimation(Animation):
     name = "text_scroll"
+    PARAMS = {
+        "text":       {"type": "str",   "default": "KRONACH LEUCHTET ", "label": "Text"},
+        "char_speed": {"type": "float", "default": 1.2, "min": 0.1, "max": 5.0, "step": 0.1, "label": "Zeichengeschwindigkeit"},
+    }
 
     # Farben die pro Buchstabe durchgewechselt werden
     _COLORS = [

@@ -25,6 +25,9 @@ def _block_center(row: int, col: int) -> tuple[float, float]:
 
 class PacmanAnimation(Animation):
     name = "pacman"
+    PARAMS = {
+        "speed": {"type": "float", "default": 0.28, "min": 0.05, "max": 2.0, "step": 0.05, "label": "Geschwindigkeit"},
+    }
 
     def __init__(self, speed: float = 0.28):
         self.speed = speed

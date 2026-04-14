@@ -10,16 +10,45 @@ Würfelaufbau:
   LEFT  = w3   RIGHT = w4
   TOP   = w5   BOTTOM= w6
 """
+import socket
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-CONTROLLERS = {
-    0: "192.168.10.241",  # w1 FRONT
-    1: "192.168.10.233",  # w2 BACK
-    2: "192.168.10.207",  # w3 LEFT
-    3: "192.168.10.208",  # w4 RIGHT
-    4: "192.168.10.215",  # w5 TOP
-    5: "192.168.10.204",  # w6 BOTTOM
+_MDNS_HOSTS = {
+    0: ("w1.local", "192.168.10.241"),  # FRONT
+    1: ("w2.local", "192.168.10.233"),  # BACK
+    2: ("w3.local", "192.168.10.207"),  # LEFT
+    3: ("w4.local", "192.168.10.208"),  # RIGHT
+    4: ("w5.local", "192.168.10.215"),  # TOP
+    5: ("w6.local", "192.168.10.204"),  # BOTTOM
 }
+
+
+def _resolve_one(face_id: int, hostname: str, fallback_ip: str) -> tuple[int, str]:
+    try:
+        ip = socket.getaddrinfo(hostname, None, socket.AF_INET)[0][4][0]
+        print(f"  {hostname} → {ip}")
+    except OSError:
+        ip = fallback_ip
+        print(f"  {hostname} → {ip} (Fallback, mDNS nicht erreichbar)")
+    return face_id, ip
+
+
+def _resolve_controllers() -> dict[int, str]:
+    result = {}
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        futures = {
+            pool.submit(_resolve_one, face_id, hostname, fallback_ip): face_id
+            for face_id, (hostname, fallback_ip) in _MDNS_HOSTS.items()
+        }
+        for future in as_completed(futures):
+            face_id, ip = future.result()
+            result[face_id] = ip
+    return result
+
+
+print("Löse Controller-IPs auf...")
+CONTROLLERS = _resolve_controllers()
 
 FACE_NAMES   = {0: "FRONT", 1: "BACK", 2: "LEFT", 3: "RIGHT", 4: "TOP", 5: "BOTTOM"}
 BLOCK_WIDTHS = [6, 7, 6, 7, 6]

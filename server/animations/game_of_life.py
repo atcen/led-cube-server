@@ -1,20 +1,26 @@
+import colorsys
 import random
 
 from ..cube import Cube, move
 from .base import Animation
 
 BLACK = [0, 0, 0]
-ALIVE = [110, 210, 150]
-NEWBORN = [180, 235, 200]
 
 
 class GameOfLifeAnimation(Animation):
     name = "game_of_life"
+    PARAMS = {
+        "speed":         {"type": "float", "default": 0.35, "min": 0.05, "max": 2.0, "step": 0.05, "label": "Schrittgeschwindigkeit"},
+        "density":       {"type": "float", "default": 0.34, "min": 0.05, "max": 0.9, "step": 0.05, "label": "Startdichte"},
+        "restart_delay": {"type": "float", "default": 1.0,  "min": 0.0,  "max": 5.0, "step": 0.5,  "label": "Neustart-Pause"},
+        "hue":           {"type": "hue",   "default": 0.36, "label": "Zellfarbe"},
+    }
 
-    def __init__(self, speed: float = 0.35, density: float = 0.34, restart_delay: float = 1.0):
+    def __init__(self, speed: float = 0.35, density: float = 0.34, restart_delay: float = 1.0, hue: float = 0.36):
         self.speed = speed
         self.density = density
         self.restart_delay = restart_delay
+        self.hue = hue   # 0=Rot, 0.08=Orange, 0.33=Grün, 0.5=Cyan, 0.66=Blau
 
     def start(self, cube: Cube) -> None:
         super().start(cube)
@@ -72,11 +78,16 @@ class GameOfLifeAnimation(Animation):
         cube.fill(BLACK)
         cube.leds.clear()
 
+        r_a, g_a, b_a = colorsys.hsv_to_rgb(self.hue, 0.45, 0.82)
+        r_n, g_n, b_n = colorsys.hsv_to_rgb(self.hue, 0.22, 0.94)
+        alive_color   = [round(r_a * 255), round(g_a * 255), round(b_a * 255)]
+        newborn_color = [round(r_n * 255), round(g_n * 255), round(b_n * 255)]
+
         for pos, alive in self._grid.items():
             if not alive:
                 continue
             face, row, col = pos
-            color = NEWBORN if pos in self._newborns else ALIVE
+            color = newborn_color if pos in self._newborns else alive_color
             cube.set(face, row, col, color)
 
     def tick(self, cube: Cube, dt: float, t: float) -> None:
