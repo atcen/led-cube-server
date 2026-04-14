@@ -44,6 +44,7 @@ cube               = Cube()
 current_animation: Animation | None = None
 animation_name     = "none"
 _loop_task         = None
+_preview_mode      = False   # True → kein UDP, nur WebSocket-Preview
 
 # WebSocket-Clients
 _ws_clients: set[WebSocket] = set()
@@ -69,7 +70,7 @@ async def animation_loop() -> None:
         if current_animation is not None:
             try:
                 current_animation.tick(cube, dt, t)
-                face_buffers = render(cube)
+                face_buffers = render(cube, preview=_preview_mode)
                 _broadcast_frame(face_buffers)
             except Exception as e:
                 log.error(f"Animation-Fehler: {e}")
@@ -122,17 +123,18 @@ async def ws_endpoint(ws: WebSocket):
 
 
 # --- Helper ---
-def _set_animation(name: str, params: dict | None = None) -> None:
-    global current_animation, animation_name, _align_face
+def _set_animation(name: str, params: dict | None = None, preview: bool = False) -> None:
+    global current_animation, animation_name, _align_face, _preview_mode
     if name not in REGISTRY:
         raise HTTPException(404, f"Animation '{name}' nicht gefunden")
-    _align_face = None
+    _align_face   = None
+    _preview_mode = preview
     cls  = REGISTRY[name]
     anim = cls(**(params or {}))
     anim.start(cube)
     current_animation = anim
     animation_name    = name
-    log.info(f"Animation: {name} {params or ''}")
+    log.info(f"Animation: {name} {'[preview]' if preview else ''} {params or ''}")
 
 
 # --- REST Endpoints ---
@@ -149,6 +151,7 @@ async def status():
         "animation":  animation_name,
         "brightness": round(cube.brightness * 255),
         "fps":        FPS,
+        "preview":    _preview_mode,
     }
 
 
@@ -174,8 +177,20 @@ async def list_animations():
 
 @app.post("/animation/{name}")
 async def set_animation(name: str):
-    _set_animation(name)
+    _set_animation(name, preview=False)
     return {"animation": name}
+
+
+@app.post("/preview/{name}")
+async def preview_animation(name: str):
+    _set_animation(name, preview=True)
+    return {"animation": name, "preview": True}
+
+
+@app.post("/preview/{name}/params")
+async def preview_animation_params(name: str, params: dict):
+    _set_animation(name, params, preview=True)
+    return {"animation": name, "params": params, "preview": True}
 
 
 @app.post("/animation/{name}/params")

@@ -132,7 +132,7 @@ async function init() {
 
   // Aktuellen Status abfragen
   api.status().then(s => {
-    setActive(s.animation);
+    setActive(s.animation, s.preview ?? true);
     if (s.brightness != null) {
       brightnessEl.value      = s.brightness;
       brightValEl.textContent = s.brightness;
@@ -163,13 +163,21 @@ function renderAnimList() {
   }
 }
 
-function setActive(name) {
+function setActive(name, preview = true) {
   activeAnim = name;
   animList.querySelectorAll('.anim-item').forEach(el => {
     el.classList.toggle('active', el.dataset.name === name);
   });
-  statusPill.textContent = name === 'none' ? 'Gestoppt' : name;
-  statusPill.className   = 'status-pill ' + (name === 'none' ? 'stopped' : 'running');
+  if (name === 'none') {
+    statusPill.textContent = 'Gestoppt';
+    statusPill.className   = 'status-pill stopped';
+  } else if (preview) {
+    statusPill.textContent = `${name} ▸ Preview`;
+    statusPill.className   = 'status-pill preview';
+  } else {
+    statusPill.textContent = name;
+    statusPill.className   = 'status-pill running';
+  }
   renderParams(name);
 }
 

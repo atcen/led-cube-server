@@ -18,8 +18,11 @@ async function apiFetch(method, path, body) {
 const api = {
   status:           ()         => apiFetch('GET',  '/status'),
   animations:       ()         => apiFetch('GET',  '/animations'),
-  startAnimation:   (name)     => apiFetch('POST', `/animation/${name}`),
-  startWithParams:  (name, p)  => apiFetch('POST', `/animation/${name}/params`, p),
+  // Preview: läuft im Server, kein UDP an die Controller
+  startAnimation:   (name)     => apiFetch('POST', `/preview/${name}`),
+  startWithParams:  (name, p)  => apiFetch('POST', `/preview/${name}/params`, p),
+  // Hardware: sendet direkt an die Controller (für Hotkeys)
+  hardwareStart:    (name)     => apiFetch('POST', `/animation/${name}`),
   stop:             ()         => apiFetch('POST', '/stop'),
   brightness:       (v)        => apiFetch('POST', `/brightness/${v}`),
   getSettings:      ()         => apiFetch('GET',  '/settings'),

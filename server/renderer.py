@@ -12,8 +12,9 @@ from .cube import Cube
 from .protocol import push_frame
 
 
-def render(cube: Cube) -> dict[int, bytes]:
-    """Rendert den aktuellen Cube-Zustand, schickt ihn via UDP und gibt face_buffers zurück."""
+def render(cube: Cube, preview: bool = False) -> dict[int, bytes]:
+    """Rendert den aktuellen Cube-Zustand und gibt face_buffers zurück.
+    preview=True → kein UDP, nur WebSocket-Feed."""
     bri = max(0.0, min(1.0, cube.brightness))
     face_buffers = {}
 
@@ -32,5 +33,6 @@ def render(cube: Cube) -> dict[int, bytes]:
             buf[vled * 3 + 2] = int(b * bri)
         face_buffers[face] = bytes(buf)
 
-    push_frame(face_buffers)
+    if not preview:
+        push_frame(face_buffers)
     return face_buffers
