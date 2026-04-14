@@ -8,6 +8,7 @@ class Animation:
     def start(self, cube: Cube) -> None:
         """Wird einmalig beim Aktivieren der Animation aufgerufen."""
         cube.fill([0, 0, 0])
+        cube.leds.clear()
 
     def tick(self, cube: Cube, dt: float, t: float) -> None:
         """

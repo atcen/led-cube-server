@@ -45,19 +45,27 @@ def _build():
     for phys_idx, key in enumerate(physical_leds):
         block_sub_leds[key].append(phys_idx)
 
-    segments        = []
-    led_map         = []
-    virtual_to_block = [None] * LEDS_TOTAL
-    virtual_pos     = 0
+    segments         = []
+    led_map          = []
+    virtual_to_block  = [None] * LEDS_TOTAL
+    vled_pos_in_block = [None] * LEDS_TOTAL   # (sub_row, sub_col_spatial)
+    block_to_vleds   = defaultdict(list)       # (grid_row, block_col) → [vled, ...]
+    virtual_pos      = 0
 
     for grid_row in range(GRID_ROWS):
         for block_col in range(GRID_COLS):
             seg_start = virtual_pos
+            width     = BLOCK_WIDTHS[block_col]
             for sub_row in range(3):
-                leds = block_sub_leds[(grid_row, block_col, sub_row)]
+                phys_row = grid_row * 3 + sub_row
+                is_rtl   = (phys_row % 2 == 1)
+                leds     = block_sub_leds[(grid_row, block_col, sub_row)]
                 led_map.extend(leds)
-                for vled in range(virtual_pos, virtual_pos + len(leds)):
-                    virtual_to_block[vled] = (grid_row, block_col)
+                for i, vled in enumerate(range(virtual_pos, virtual_pos + len(leds))):
+                    virtual_to_block[vled]  = (grid_row, block_col)
+                    block_to_vleds[(grid_row, block_col)].append(vled)
+                    sub_col = (width - 1 - i) if is_rtl else i
+                    vled_pos_in_block[vled] = (sub_row, sub_col)
                 virtual_pos += len(leds)
             segments.append({
                 "id":        grid_row * GRID_COLS + block_col,
@@ -67,7 +75,7 @@ def _build():
                 "block_col": block_col,
             })
 
-    return segments, led_map, virtual_to_block
+    return segments, led_map, virtual_to_block, dict(block_to_vleds), vled_pos_in_block
 
 
-SEGMENTS, LED_MAP, VIRTUAL_TO_BLOCK = _build()
+SEGMENTS, LED_MAP, VIRTUAL_TO_BLOCK, BLOCK_TO_VLEDS, VLED_POS_IN_BLOCK = _build()
