@@ -258,7 +258,6 @@ function _fmtVal(v, step) {
 
 function _onParamChange(name) {
   const currentParams = collectParams(name);
-  api.startWithParams(name, currentParams).catch(console.error);
   if (!settings.animation_params) settings.animation_params = {};
   settings.animation_params[name] = currentParams;
   api.saveSettings({ animation_params: settings.animation_params }).catch(() => {});
