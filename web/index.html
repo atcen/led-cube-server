@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WLED Cube</title>
+  <link rel="stylesheet" href="/ui/css/style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- === Sidebar === -->
+  <aside id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">&#9648;</div>
+      <div>
+        <h1>WLED Cube</h1>
+        <div class="subtitle">Animation Server</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Animationen</h3>
+      <ul class="anim-list" id="anim-list"></ul>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Controller</h3>
+      <ul class="ctrl-list" id="ctrl-list"></ul>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:auto">
+      <button class="btn btn-secondary" id="btn-wizard" style="width:100%">Setup-Wizard</button>
+    </div>
+  </aside>
+
+  <!-- === Hauptbereich === -->
+  <main id="main">
+    <div id="canvas-area">
+      <canvas id="cube-canvas" style="width:100%;height:100%"></canvas>
+    </div>
+
+    <div id="controls-bar">
+      <span id="status-pill" class="status-pill stopped">Gestoppt</span>
+
+      <button class="btn" id="btn-stop">Stop</button>
+
+      <div class="brightness-group">
+        <label for="brightness">Helligkeit</label>
+        <input type="range" id="brightness" min="0" max="255" value="128">
+        <span id="brightness-val">128</span>
+      </div>
+
+      <div id="params-panel"></div>
+
+      <span id="ws-status" class="disconnected">○ Getrennt</span>
+    </div>
+  </main>
+
+</div>
+
+<!-- === Wizard Overlay === -->
+<div id="wizard-overlay" class="hidden"></div>
+
+<!-- === Toast Container === -->
+<div id="toast-container" class="toast-container"></div>
+
+<script type="module" src="/ui/js/app.js"></script>
+</body>
+</html>
