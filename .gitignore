@@ -8,3 +8,4 @@ venv/
 settings.json
 image/.pi-gen/
 image/deploy/
+image/stage-wled/00-install/files/wled/

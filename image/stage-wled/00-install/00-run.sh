@@ -1,21 +1,10 @@
 #!/bin/bash -e
 # Wird im Build-Environment ausgeführt (nicht im Chroot).
-# Kopiert das Projekt in das Image-Rootfs.
+# Kopiert das Projekt (aus files/wled/) in das Image-Rootfs.
+# FILES_DIR ist eine pi-gen-Variable: zeigt auf diesen stage/files/-Ordner.
 
-ROOTFS="${ROOTFS_DIR}"
-PROJECT_SRC="$(cd "$(dirname "$0")/../../.." && pwd)"   # Repo-Root
+install -d -m 755 -o 1000 -g 1000 "${ROOTFS_DIR}/home/pi/wled"
 
-install -d -m 755 -o 1000 -g 1000 "${ROOTFS}/home/pi/wled"
+rsync -a "${FILES_DIR}/wled/" "${ROOTFS_DIR}/home/pi/wled/"
 
-# Projektdateien ins Image kopieren (ohne .git, .venv, __pycache__)
-rsync -a --delete \
-    --exclude='.git' \
-    --exclude='.venv' \
-    --exclude='__pycache__' \
-    --exclude='*.pyc' \
-    --exclude='debug_screenshots' \
-    --exclude='image' \
-    "${PROJECT_SRC}/" \
-    "${ROOTFS}/home/pi/wled/"
-
-chown -R 1000:1000 "${ROOTFS}/home/pi/wled"
+chown -R 1000:1000 "${ROOTFS_DIR}/home/pi/wled"

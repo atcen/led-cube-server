@@ -33,6 +33,23 @@ else
     git clone --depth 1 https://github.com/RPi-Distro/pi-gen.git "${PIGEN_DIR}"
 fi
 
+# ---- Projektdateien in Stage-files/ kopieren ----
+# (pi-gen führt Skripte aus seinem eigenen Verzeichnis aus — relative Pfade
+#  zum Repo funktionieren dort nicht; Dateien müssen im stage-Ordner liegen)
+log "Projektdateien in Stage kopieren…"
+STAGE_FILES="${SCRIPT_DIR}/stage-wled/00-install/files/wled"
+rm -rf "${STAGE_FILES}"
+rsync -a \
+    --exclude='.git' \
+    --exclude='.venv' \
+    --exclude='__pycache__' \
+    --exclude='*.pyc' \
+    --exclude='image/.pi-gen' \
+    --exclude='image/deploy' \
+    --exclude='debug_screenshots' \
+    "${REPO_ROOT}/" \
+    "${STAGE_FILES}/"
+
 # ---- Eigenen Stage verlinken ----
 log "Stage vorbereiten…"
 ln -sfn "${SCRIPT_DIR}/stage-wled" "${PIGEN_DIR}/stage-wled"
