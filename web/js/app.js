@@ -176,7 +176,12 @@ function setActive(name) {
 // ---- Animation starten ----
 async function startAnimation(name) {
   try {
-    await api.startAnimation(name);
+    const saved = settings.animation_params?.[name];
+    if (saved && Object.keys(saved).length > 0) {
+      await api.startWithParams(name, saved);
+    } else {
+      await api.startAnimation(name);
+    }
     setActive(name);
   } catch (e) {
     showToast(`Fehler: ${e.message}`, 'error');
