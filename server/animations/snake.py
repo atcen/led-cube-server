@@ -24,12 +24,14 @@ class SnakeAnimation(Animation):
         "start_length": {"type": "int",   "default": 5,    "min": 1,    "max": 20,  "step": 1,    "label": "Startlänge"},
         "speed":        {"type": "float", "default": 0.5,  "min": 0.05, "max": 3.0, "step": 0.05, "label": "Geschwindigkeit", "description": "Sekunden pro Schritt"},
         "hue":          {"type": "hue",   "default": 0.08, "label": "Körperfarbe"},
+        "food_hue":     {"type": "hue",   "default": 0.33, "label": "Futterfarbe"},
     }
 
-    def __init__(self, start_length: int = 5, speed: float = 0.5, hue: float = 0.08):
+    def __init__(self, start_length: int = 5, speed: float = 0.5, hue: float = 0.08, food_hue: float = 0.33):
         self.start_length = start_length
-        self.speed        = speed   # Sekunden pro Schritt
-        self.hue          = hue     # Basis-Farbton des Körpers (0=Rot, 0.08=Orange, 0.33=Grün, 0.66=Blau)
+        self.speed        = speed
+        self.hue          = hue       # Farbton des Körpers (0=Rot, 0.08=Orange, 0.33=Grün, 0.66=Blau)
+        self.food_hue     = food_hue  # Farbton des Futters
 
     def start(self, cube: Cube) -> None:
         cube.fill(BLACK)
@@ -53,13 +55,13 @@ class SnakeAnimation(Animation):
         return random.choice(free)
 
     def _body_color(self, i: int) -> list:
-        """Farbgradient: Kopf=weiß, Körper hue→dunkel."""
+        """Farbgradient: Kopf=weiß/hell, Körper in hue → dunkler zum Schwanz."""
         if i == 0:
             return [255, 255, 255]
         t   = (i - 1) / max(self.length - 2, 1)
-        hue = self.hue * (1.0 - t)
-        val = 1.0 - t * 0.8
-        r, g, b = colorsys.hsv_to_rgb(hue, 1.0, val)
+        sat = 0.6 + 0.4 * (1.0 - t)   # Kopf-nahe Segmente leicht entsättigt (heller)
+        val = 1.0 - t * 0.75
+        r, g, b = colorsys.hsv_to_rgb(self.hue, sat, val)
         return [round(r * 255), round(g * 255), round(b * 255)]
 
     def _bfs_first_step(self) -> str | None:
@@ -154,7 +156,8 @@ class SnakeAnimation(Animation):
         # Futter (blinkt leicht)
         ff, fr, fc = self.food
         food_bri = 0.6 + 0.4 * abs((p * 2) % 2 - 1)
-        cube.set(ff, fr, fc, [0, round(255 * food_bri), 0])
+        fr_rgb, fg_rgb, fb_rgb = colorsys.hsv_to_rgb(self.food_hue, 1.0, food_bri)
+        cube.set(ff, fr, fc, [round(fr_rgb * 255), round(fg_rgb * 255), round(fb_rgb * 255)])
 
         # Körper
         for i, (f, r, c) in enumerate(self.body):
