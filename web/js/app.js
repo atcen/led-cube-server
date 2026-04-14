@@ -6,6 +6,7 @@ import api from './api.js';
 import { Cube3D } from './cube3d.js';
 import { Wizard } from './wizard.js';
 import { ShortcutManager } from './shortcuts.js';
+import { renderHotkeysEditor, pynputToDisplay } from './hotkeys_editor.js';
 
 // ---- State ----
 let cube3d       = null;
@@ -28,6 +29,8 @@ const paramsBar    = document.getElementById('params-bar');
 const cubeCanvas   = document.getElementById('cube-canvas');
 const toastCont    = document.getElementById('toast-container');
 const wizardEl     = document.getElementById('wizard-overlay');
+const settingsEl   = document.getElementById('settings-overlay');
+const settingsBody = document.getElementById('settings-body');
 
 // ---- Init ----
 async function init() {
@@ -52,7 +55,7 @@ async function init() {
 
   // Brightness initialisieren
   const bri = settings.brightness ?? 128;
-  brightnessEl.value   = bri;
+  brightnessEl.value      = bri;
   brightValEl.textContent = bri;
 
   // Animations-Liste rendern
@@ -87,7 +90,6 @@ async function init() {
     wizard.show();
   }
 
-  // Wizard über Einstellungs-Button erneut öffnen
   document.getElementById('btn-wizard').addEventListener('click', () => wizard.show());
 
   // Ausrichtungs-Button
@@ -105,6 +107,15 @@ async function init() {
       btnAlign.classList.add('active');
       alignActive = true;
     }
+  });
+
+  // Settings-Button
+  document.getElementById('btn-settings').addEventListener('click', openSettings);
+  document.getElementById('settings-close').addEventListener('click', closeSettings);
+  document.getElementById('settings-cancel').addEventListener('click', closeSettings);
+  document.getElementById('settings-save').addEventListener('click', saveSettings);
+  settingsEl.addEventListener('click', (e) => {
+    if (e.target === settingsEl) closeSettings();
   });
 
   // Event-Listener
@@ -141,10 +152,11 @@ function renderAnimList() {
     li.className = 'anim-item' + (name === activeAnim ? ' active' : '');
     li.dataset.name = name;
 
-    const sc = settings.keyboard_shortcuts?.per_animation?.[name] || '';
+    const combo = settings.hotkey_shortcuts?.per_animation?.[name] || null;
+    const scLabel = combo ? pynputToDisplay(combo) : '';
     li.innerHTML = `
       <span class="anim-name">${name}</span>
-      ${sc ? `<span class="anim-shortcut">${sc}</span>` : ''}
+      ${scLabel ? `<span class="anim-shortcut">${scLabel}</span>` : ''}
     `;
     li.addEventListener('click', () => startAnimation(name));
     animList.appendChild(li);
@@ -307,10 +319,54 @@ function connectWS() {
   };
 }
 
-// ---- Shortcuts ----
+// ---- Settings-Modal ----
+let _getHotkeyValues = null;
+
+function openSettings() {
+  const enabledKeys = settings.enabled_animations || Object.keys(animations);
+  const animNames   = Object.keys(animations).filter(n => enabledKeys.includes(n));
+
+  settingsBody.innerHTML = `
+    <div class="settings-section-title">Hotkeys (Raspberry Pi Daemon)</div>
+    <p class="settings-hint">
+      Diese Tastenkürzel werden vom Daemon auf dem Raspberry Pi ausgeführt —
+      das Web UI muss dafür <strong>nicht</strong> geöffnet sein.
+    </p>
+    <div id="hk-editor"></div>
+  `;
+
+  const editorEl = settingsBody.querySelector('#hk-editor');
+  _getHotkeyValues = renderHotkeysEditor(
+    editorEl,
+    settings.hotkey_shortcuts || {},
+    animNames,
+  );
+
+  settingsEl.classList.remove('hidden');
+}
+
+function closeSettings() {
+  settingsEl.classList.add('hidden');
+  _getHotkeyValues = null;
+}
+
+async function saveSettings() {
+  if (!_getHotkeyValues) return;
+  const hotkeys = _getHotkeyValues();
+  try {
+    settings = await api.saveSettings({ hotkey_shortcuts: hotkeys });
+    renderAnimList();  // Shortcut-Labels in der Sidebar aktualisieren
+    showToast('Einstellungen gespeichert', 'success');
+    closeSettings();
+  } catch (e) {
+    showToast('Fehler beim Speichern', 'error');
+  }
+}
+
+// ---- Web-UI Shortcuts ----
 function handleShortcut(action) {
-  const keys = Object.keys(animations);
-  const enabled = settings.enabled_animations || keys;
+  const keys     = Object.keys(animations);
+  const enabled  = settings.enabled_animations || keys;
   const available = keys.filter(k => enabled.includes(k));
 
   if (action === '__stop__') {
@@ -318,7 +374,7 @@ function handleShortcut(action) {
     return;
   }
   if (action === '__next__') {
-    const idx = available.indexOf(activeAnim);
+    const idx  = available.indexOf(activeAnim);
     const next = available[(idx + 1) % available.length];
     if (next) startAnimation(next);
     return;
@@ -328,7 +384,6 @@ function handleShortcut(action) {
     if (pick) startAnimation(pick);
     return;
   }
-  // Direkte Animation
   if (available.includes(action)) {
     startAnimation(action);
   }

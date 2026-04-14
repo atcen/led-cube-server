@@ -31,8 +31,9 @@
     </div>
 
     <div class="sidebar-section" style="margin-top:auto">
-      <button class="btn btn-secondary" id="btn-align" style="width:100%;margin-bottom:6px">Ausrichten</button>
-      <button class="btn btn-secondary" id="btn-wizard" style="width:100%">Setup-Wizard</button>
+      <button class="btn btn-secondary" id="btn-align"    style="width:100%;margin-bottom:6px">Ausrichten</button>
+      <button class="btn btn-secondary" id="btn-settings" style="width:100%;margin-bottom:6px">&#9881; Einstellungen</button>
+      <button class="btn btn-secondary" id="btn-wizard"   style="width:100%">Setup-Wizard</button>
     </div>
   </aside>
 
@@ -63,6 +64,21 @@
 
 <!-- === Wizard Overlay === -->
 <div id="wizard-overlay" class="hidden"></div>
+
+<!-- === Settings Overlay === -->
+<div id="settings-overlay" class="hidden">
+  <div class="settings-box">
+    <div class="settings-header">
+      <h2>Einstellungen</h2>
+      <button class="btn-icon" id="settings-close">✕</button>
+    </div>
+    <div class="settings-body" id="settings-body"></div>
+    <div class="settings-footer">
+      <button class="btn btn-secondary" id="settings-cancel">Abbrechen</button>
+      <button class="btn btn-primary"   id="settings-save">Speichern</button>
+    </div>
+  </div>
+</div>
 
 <!-- === Toast Container === -->
 <div id="toast-container" class="toast-container"></div>

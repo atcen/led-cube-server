@@ -31,10 +31,14 @@ export class Cube3D {
   }
 
   _initThree() {
-    const { clientWidth: w, clientHeight: h } = this.canvas;
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.setSize(w, h);
+
+    // CSS (width:100%;height:100%) steuert die Anzeigegröße —
+    // Three.js bekommt false damit es das nicht überschreibt.
+    const w = Math.max(this.canvas.clientWidth,  100);
+    const h = Math.max(this.canvas.clientHeight, 100);
+    this.renderer.setSize(w, h, false);
 
     this.scene  = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
@@ -56,7 +60,8 @@ export class Cube3D {
     this.controls.minPolarAngle = polarAngle;
     this.controls.maxPolarAngle = polarAngle;
 
-    window.addEventListener('resize', () => this._onResize());
+    // ResizeObserver: reagiert zuverlässig auf Größenänderungen des Containers
+    new ResizeObserver(() => this._onResize()).observe(this.canvas.parentElement);
   }
 
   _initCube() {
@@ -173,10 +178,12 @@ export class Cube3D {
   }
 
   _onResize() {
-    const { clientWidth: w, clientHeight: h } = this.canvas;
+    const container = this.canvas.parentElement;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
     if (w === 0 || h === 0) return;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(w, h);
+    this.renderer.setSize(w, h, false);  // false = CSS nicht überschreiben
   }
 }
