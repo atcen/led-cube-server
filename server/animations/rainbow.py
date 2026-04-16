@@ -12,6 +12,10 @@ from .base import Animation
 
 class RainbowAnimation(Animation):
     name = "rainbow"
+    PARAMS = {
+        "speed":     {"type": "float", "default": 0.3, "min": 0.02, "max": 3.0, "step": 0.02, "label": "Geschwindigkeit"},
+        "wave_size": {"type": "float", "default": 1.5, "min": 0.1,  "max": 5.0, "step": 0.1,  "label": "Wellengröße"},
+    }
 
     def __init__(self, speed: float = 0.3, wave_size: float = 1.5):
         self.speed     = speed      # Rotationsgeschwindigkeit (Zyklen/Sekunde)

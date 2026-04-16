@@ -69,7 +69,8 @@ class Cube:
             for r in range(5)
             for c in range(5)
         }
-        self.brightness: float = 1.0  # 0.0–1.0
+        self.brightness: float = 1.0           # 0.0–1.0
+        self.leds: dict[tuple, list] = {}      # (face, vled) → [r,g,b], überschreibt Blockfarbe
 
     def set(self, face: int, row: int, col: int, color: list) -> None:
         self.blocks[(face, row, col)] = color
