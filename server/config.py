@@ -15,12 +15,12 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 MDNS_HOSTS = {
-    0: ("w1.local", "192.168.10.241"),  # FRONT
-    1: ("w2.local", "192.168.10.233"),  # BACK
-    2: ("w3.local", "192.168.10.207"),  # LEFT
-    3: ("w4.local", "192.168.10.208"),  # RIGHT
-    4: ("w5.local", "192.168.10.215"),  # TOP
-    5: ("w6.local", "192.168.10.204"),  # BOTTOM
+    0: ("w6.local", "192.168.10.106"),  # FRONT
+    1: ("w5.local", "192.168.10.105"),  # BACK
+    2: ("w3.local", "192.168.10.103"),  # LEFT
+    3: ("w1.local", "192.168.10.101"),  # RIGHT
+    4: ("w4.local", "192.168.10.104"),  # TOP
+    5: ("w2.local", "192.168.10.102"),  # BOTTOM
 }
 
 
@@ -57,7 +57,7 @@ GRID_COLS    = 5
 PHYS_ROWS    = GRID_ROWS * 3
 LEDS_TOTAL   = 480
 UDP_PORT     = 21324
-FPS          = 30
+FPS          = 15
 
 
 def _build():

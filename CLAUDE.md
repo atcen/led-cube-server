@@ -8,12 +8,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | Name | IP | Würfelseite |
 |---|---|---|
-| w1.local | 192.168.10.241 | FRONT |
-| w2.local | 192.168.10.233 | BACK |
-| w3.local | 192.168.10.207 | LEFT |
-| w4.local | 192.168.10.208 | RIGHT |
-| w5.local | 192.168.10.215 | TOP |
-| w6.local | 192.168.10.204 | BOTTOM |
+| w6.local | 192.168.10.106 | FRONT |
+| w5.local | 192.168.10.105 | BACK |
+| w3.local | 192.168.10.103 | LEFT |
+| w1.local | 192.168.10.101 | RIGHT |
+| w4.local | 192.168.10.104 | TOP |
+| w2.local | 192.168.10.102 | BOTTOM |
 
 WLED-Version: 0.15.3, ESP32, max. 32 Segmente pro Controller.
 

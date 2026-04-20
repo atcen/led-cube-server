@@ -101,9 +101,9 @@ export class Cube3D {
     this.mesh = new THREE.Mesh(geo, materials);
 
     // Würfel an einer Ecke hängend:
-    // Ecke (1,1,1) exakt nach oben (Welt-Y) ausrichten — via Quaternion, kein Euler-Gimbal
+    // Ecke (-1,-1,1) (Blau / Front-Bottom-Left) exakt nach oben (Welt-Y) ausrichten
     const q1 = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(1, 1, 1).normalize(),
+      new THREE.Vector3(-1, -1, 1).normalize(),
       new THREE.Vector3(0, 1, 0)
     );
     // +30° um Welt-Y → symmetric 3-Flächen-Ansicht von vorne

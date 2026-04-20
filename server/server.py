@@ -70,14 +70,6 @@ async def animation_loop() -> None:
         t   = now - anim_start
         last_t = now
         
-        loop_count += 1
-        if loop_count % (FPS * 10) == 0: # Alle 10 Sekunden
-             log.info(f"Loop Heartbeat: anim={animation_name}, align={_align_face}, is_align_all={_is_align_all}")
-
-        # Alle 60 Sekunden mDNS-Rediscovery im Hintergrund anstoßen
-        if loop_count % (FPS * 60) == 0:
-             asyncio.create_task(discovery.check_all())
-
         # Wenn eine Animation läuft ODER wir im Montage/Align-Modus sind:
         # Puffer rendern und senden.
         if current_animation is not None:
@@ -100,7 +92,9 @@ async def animation_loop() -> None:
 def _broadcast_frame(face_buffers: dict[int, bytes]) -> None:
     """Baut den WS-Frame (8640 Bytes) und sendet ihn an alle verbundenen Clients."""
     global _last_frame
-    frame = b"".join(face_buffers[f] for f in range(6))
+    # Falls eine Fläche fehlt (z.B. Offline-Controller), leeren Puffer senden
+    empty = bytes(LEDS_TOTAL * 3)
+    frame = b"".join(face_buffers.get(f, empty) for f in range(6))
     _last_frame = frame
     dead: set[WebSocket] = set()
     for ws in list(_ws_clients):
@@ -117,6 +111,27 @@ async def lifespan(app: FastAPI):
     global _loop_task
     log.info(f"Animation-Loop startet @ {FPS} fps")
     _loop_task = asyncio.create_task(animation_loop())
+    
+    # Hintergrund-Tasks: Setup der Panels & Start-Animation
+    async def startup_tasks():
+        log.info("Führe Panel-Setup durch...")
+        try:
+            # Nutzt das vorhandene Setup-Skript
+            import subprocess
+            subprocess.Popen(["/home/pi/wled/.venv/bin/python3", "scripts/setup_all.py"], 
+                             cwd="/home/pi/wled")
+        except Exception as e:
+            log.error(f"Panel-Setup fehlgeschlagen: {e}")
+            
+        await asyncio.sleep(2) # Kurz warten bis Setup-Pakete raus sind
+        log.info("Aktiviere Start-Animation...")
+        try:
+            _set_animation("rainbow")
+        except Exception as e:
+            log.error(f"Konnte Start-Animation nicht laden: {e}")
+
+    asyncio.create_task(startup_tasks())
+    
     yield
     _loop_task.cancel()
 

@@ -6,17 +6,12 @@ import json
 import urllib.request
 import threading
 import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from server.config import SEGMENTS, LED_MAP as _led_map
+from server.config import SEGMENTS, LED_MAP as _led_map, CONTROLLERS
 def build_led_map(): return _led_map
 
-CONTROLLERS = [
-    "192.168.10.241",  # w1
-    "192.168.10.233",  # w2
-    "192.168.10.207",  # w3
-    "192.168.10.208",  # w4
-    "192.168.10.215",  # w5
-    "192.168.10.204",  # w6
-]
+# CONTROLLERS kommt jetzt direkt aus server.config (dynamisch aufgelöst)
+# CONTROLLERS ist ein Dict {face_id: ip}
+targets = list(CONTROLLERS.values())
 
 led_map  = build_led_map()
 led_map_json = json.dumps({"map": led_map}).encode()
@@ -62,7 +57,7 @@ def setup(host):
         print(f"{host}: FEHLER — {e}")
 
 
-threads = [threading.Thread(target=setup, args=(h,)) for h in CONTROLLERS]
+threads = [threading.Thread(target=setup, args=(h,)) for h in targets]
 for t in threads:
     t.start()
 for t in threads:

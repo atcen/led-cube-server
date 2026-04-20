@@ -77,7 +77,10 @@ class WaterFillAnimation(Animation):
 
     def _fill_height(self, face: int, phys_row: int, phys_col: int) -> float:
         px, py, pz = self._surface_point(face, phys_row, phys_col)
-        return (px + py + pz + 3.0) / 6.0
+        # Blaue Ecke (Top): px=-1, py=-1, pz=1
+        # Wir wollen, dass dieser Punkt den Wert 1.0 (voll) hat und die gegenüberliegende Ecke 0.0
+        # Diagonale: -px - py + pz geht von (-1,-1,1) -> 3 bis (1,1,-1) -> -3
+        return ((-px - py + pz) + 3.0) / 6.0
 
     def tick(self, cube: Cube, dt: float, t: float) -> None:
         cycle = self.fill_duration + self.hold_duration

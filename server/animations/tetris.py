@@ -297,6 +297,9 @@ class TetrisAnimation(Animation):
         for face in SIDE_FACES:
             for r in range(ROWS):
                 for c in range(COLS):
+                    # 180 Grad Drehung: r -> 4-r, c -> 4-c
+                    target_r, target_c = 4 - r, 4 - c
+                    
                     if flash and r in self.flash_rows:
                         color = [255, 255, 255]
                     elif (r, c) in active_cells:
@@ -305,7 +308,7 @@ class TetrisAnimation(Animation):
                         color = self.grid[r][c]
                     else:
                         color = [0, 0, 0]
-                    cube.set(face, r, c, color)
+                    cube.set(face, target_r, target_c, color)
 
         # TOP: Score als Helligkeit
         brightness = min(255, self.score * 25)

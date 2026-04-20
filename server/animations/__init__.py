@@ -16,18 +16,13 @@ from .dice_roll import DiceRollAnimation
 
 REGISTRY: dict = {
     "snake":        SnakeAnimation,
-    "snake_smooth": SnakeSmoothAnimation,
     "rainbow":      RainbowAnimation,
-    "checkerboard": CheckerboardAnimation,
     "water_fill":   WaterFillAnimation,
-    "emoji_face":   EmojiFaceAnimation,
-    "heart":        HeartAnimation,
     "game_of_life": GameOfLifeAnimation,
     "text_scroll":  TextScrollAnimation,
     "rubik_solve":  RubikSolveAnimation,
     "watercolor":   WatercolorAnimation,
     "clock":        ClockAnimation,
     "tetris":       TetrisAnimation,
-    "pacman":       PacmanAnimation,
     "dice_roll":    DiceRollAnimation,
 }
