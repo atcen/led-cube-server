@@ -22,7 +22,6 @@ REGISTRY: dict = {
     "text_scroll":  TextScrollAnimation,
     "rubik_solve":  RubikSolveAnimation,
     "watercolor":   WatercolorAnimation,
-    "clock":        ClockAnimation,
     "tetris":       TetrisAnimation,
     "dice_roll":    DiceRollAnimation,
 }
