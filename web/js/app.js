@@ -148,12 +148,9 @@ async function init() {
 
 // ---- Animations-Liste ----
 function renderAnimList() {
-  const enabled = settings.enabled_animations;
   animList.innerHTML = '';
 
   for (const [name] of Object.entries(animations)) {
-    if (enabled && !enabled.includes(name)) continue;
-
     const li = document.createElement('li');
     li.className = 'anim-item' + (name === activeAnim ? ' active' : '');
     li.dataset.name = name;

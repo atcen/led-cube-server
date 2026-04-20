@@ -13,10 +13,12 @@ from .clock import ClockAnimation
 from .tetris import TetrisAnimation
 from .pacman import PacmanAnimation
 from .dice_roll import DiceRollAnimation
+from .pucks import PucksAnimation
 
 REGISTRY: dict = {
     "snake":        SnakeAnimation,
     "rainbow":      RainbowAnimation,
+    "pucks":        PucksAnimation,
     "water_fill":   WaterFillAnimation,
     "game_of_life": GameOfLifeAnimation,
     "text_scroll":  TextScrollAnimation,

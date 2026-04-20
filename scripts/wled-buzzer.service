@@ -1,0 +1,17 @@
+[Unit]
+Description=WLED Cube Buzzer & LED Rings Daemon
+After=network.target wled-server.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/pi/wled
+ExecStart=/home/pi/wled/.venv/bin/python3 -u scripts/buzzer_daemon.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
