@@ -208,6 +208,26 @@ async def list_animations():
     return result
 
 
+@app.post("/animation/next")
+async def next_animation():
+    st = settings.load()
+    enabled = [a for a in st.get("enabled_animations", list(REGISTRY.keys())) if a in REGISTRY]
+    if not enabled:
+        enabled = list(REGISTRY.keys())
+    if not enabled:
+        return {"status": "no animations enabled"}
+
+    try:
+        current_idx = enabled.index(animation_name)
+        next_idx = (current_idx + 1) % len(enabled)
+    except ValueError:
+        next_idx = 0
+
+    next_name = enabled[next_idx]
+    _set_animation(next_name)
+    return {"animation": next_name}
+
+
 @app.post("/animation/{name}")
 async def set_animation(name: str):
     _set_animation(name, preview=False)
@@ -284,22 +304,6 @@ async def reset_controller(face_id: int):
             raise HTTPException(500, f"Reset fehlgeschlagen: {e}")
 
 
-@app.post("/animation/next")
-async def next_animation():
-    st = settings.load()
-    enabled = st.get("enabled_animations", list(REGISTRY.keys()))
-    if not enabled:
-        return {"status": "no animations enabled"}
-    
-    try:
-        current_idx = enabled.index(animation_name)
-        next_idx = (current_idx + 1) % len(enabled)
-    except ValueError:
-        next_idx = 0
-        
-    next_name = enabled[next_idx]
-    _set_animation(next_name)
-    return {"animation": next_name}
 
 
 # --- Ausrichtung ---

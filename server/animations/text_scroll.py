@@ -223,7 +223,7 @@ class TextScrollAnimation(Animation):
         pattern = FONT.get(char.upper(), FONT[' '])
         for row in range(5):
             for col in range(5):
-                c = color if pattern[row][col] else [0, 0, 0]
+                c = color if pattern[4 - row][4 - col] else [0, 0, 0]
                 cube.set(face, row, col, c)
 
     def tick(self, cube: Cube, dt: float, t: float) -> None:
